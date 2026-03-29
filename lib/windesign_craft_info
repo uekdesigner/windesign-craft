@@ -1,0 +1,138 @@
+Bu Flutter projesi, PVC tasarım uygulaması "WinDesign_Craft Pro" için geliştirilmiş ve Clean Architecture + MVVM desenine uygun şekilde yapılandırılmıştır. İşte dosyaların işlevleri ve bağımlılıkları:
+
+🏗️ Mimari Yapı
+1. Core Katmanı (lib/core/)
+Tema yönetimi (app_theme.dart)
+
+Sabitler, extension'lar
+
+Bağımlılık: Flutter Material paketi
+
+2. Data Katmanı (lib/data/)
+Veri Kaynakları (datasources/)
+local_database.dart: SQLite veritabanı işlemleri
+
+Bağımlılık: sqflite, path paketleri
+
+Modeller (models/)
+project_model.dart: Proje veri modeli
+
+drawing_model.dart: Çizim veri modeli
+
+Bağımlılık: Yok (saf Dart sınıfları)
+
+Repository Implementasyonları (repositories/)
+project_repository_impl.dart: Domain katmanındaki abstract repository implementasyonu
+
+Bağımlılık: LocalDatabase, Project modeli
+
+3. Domain Katmanı (lib/domain/)
+Repository Interface'leri (repositories/)
+project_repository.dart: Abstract repository tanımı
+
+Bağımlılık: Project modeli
+
+4. Presentation Katmanı (lib/presentation/)
+Sayfalar (pages/)
+home_page.dart: Ana giriş sayfası
+
+project_form_page.dart: Yeni proje oluşturma
+
+project_edit_page.dart: Proje düzenleme
+
+projects_list_page.dart: Proje listesi (alfabetik sıralı)
+
+project_detail_page.dart: Proje detayları
+
+drawing_management_page.dart: Çizim yönetimi
+
+drawing_canvas_page.dart: Çizim canvas'ı
+
+State Management (providers/)
+project_provider.dart: Proje state yönetimi
+
+drawing_provider.dart: Çizim state yönetimi
+
+Bağımlılık: flutter_riverpod, ilgili repository'ler
+
+Widget'lar (widgets/)
+phone_input_field.dart: Telefon giriş alanı
+
+Bağımlılık: mask_text_input_formatter, shared_preferences, geolocator
+
+5. Utilities (lib/utils/)
+Formatlayıcılar, validatörler, helper'lar
+
+🔄 Bağımlılık Akışı
+text
+Presentation → Domain ← Data
+     ↓              ↓
+   Widgets     Repository Interface
+     ↓              ↓
+  Providers → Repository Implementation
+     ↓              ↓
+   Models     Local Database
+📱 Sayfa Akışı ve İşlevsellik
+Ana Akış:
+HomePage → Proje oluştur/Listele/Ayarlar
+
+ProjectFormPage → Yeni proje → DrawingManagementPage
+
+ProjectsListPage → ProjectDetailPage → ProjectEditPage
+
+ProjectDetailPage → DrawingManagementPage → DrawingCanvasPage
+
+Temel İşlevler:
+📋 Proje Yönetimi
+Proje oluşturma/düzenleme/silme
+
+Alfabetik sıralı liste
+
+Telefon arama özelliği (url_launcher)
+
+Form validation ve otomatik formatlama
+
+🎨 Çizim Yönetimi
+Çizim oluşturma/silme
+
+Canvas arayüzü (henüz tam implemente değil)
+
+Proje-çizim ilişkisi
+
+🌍 Uluslararası Telefon Girişi
+Ülke kodlarıyla telefon formatlama
+
+Konum bazlı otomatik ülke seçimi
+
+Özel ülke ekleme özelliği
+
+💾 Veri Saklama
+SQLite veritabanı (windesign_craft.db)
+
+SharedPreferences (ülke tercihleri)
+
+Otomatik ID generation
+
+🛠️ Teknik Özellikler
+State Management: Riverpod
+
+Database: SQFlite
+
+UI Framework: Flutter Material 3
+
+Formatters: Mask text input, özel formatlayıcılar
+
+Location: Geolocator & Geocoding
+
+Internationalization: Country code picker
+
+⚠️ Eksik/Geliştirilecek Noktalar
+project_repository_impl.dart'ta updateProject ve getProjectById implemente edilmemiş
+
+Çizim canvas'ı henüz tam fonksiyonel değil
+
+Ayarlar sayfası boş
+
+Drawing data management tamamlanmamış
+
+Bu yapı, uygulamanın genişletilebilir ve sürdürülebilir olmasını sağlayacak şekilde tasarlanmıştır.

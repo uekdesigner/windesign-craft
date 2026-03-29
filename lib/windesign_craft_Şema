@@ -1,0 +1,86 @@
+📁assets/
+│   └──📁icons/
+│       └── logo.png
+│
+📁lib/
+├── main.dart
+│
+├──📁core/
+│   │
+│   ├──📁constants/
+│   ├──📁errors/
+│   │   └── app_exceptions.dart
+│   ├──📁extensions/
+│   ├──📁services/
+│   │   └── error_handler_service.dart
+│   ├──📁 theme/
+│   │   └── app_theme.dart
+│   └──📁utils/
+│       └── result.dart
+│
+├──📁data/
+│   │
+│   ├──📁datasources/
+│   │   ├──📁dao/
+│   │   └── local_database.dart 
+│   │  
+│   ├──📁models/
+│   │   ├── drawing_model.dart
+│   │   ├── project_model.dart
+│   │   └── shape_spec.dart
+│   │
+│   └──📁repositories/
+│       ├── drawing_repository_impl.dart
+│       └── project_repository_impl.dart 
+│
+├──📁domain/
+│   ├──📁entities/
+│   ├──📁repositories/
+│   │   ├── drawing_repository.dart
+│   │   └── project_repository.dart 
+│   └──📁usecases/
+│       ├── add_project_usecase.dart
+│       ├── delete_project_usecase.dart
+│       ├── get_drawings_usecase.dart
+│       ├── get_project_by_id_usecase.dart
+│       ├── get_projects_usecase.dart
+│       └── update_project_usecase.dart
+│
+├──📁presentation/
+│   │
+│   ├──📁pages/
+│   │   ├── drawing_canvas_page.dart 
+│   │   ├── drawing_management_page.dart 
+│   │   ├── home_page.dart
+│   │   ├── project_detail_page.dart
+│   │   ├── project_edit_page.dart 
+│   │   ├── project_form_page.dart 
+│   │   └── projects_list_page.dart
+│   │
+│   ├──📁painters/
+│   │   └── quadrilateral_painter.dart
+│   ├──📁providers/
+│   │   ├── drawing_provider.dart 
+│   │   ├── project_provider.dart 
+│   │   └── provider_cache_manager.dart
+│   │
+│   └──📁widgets/
+│       │
+│       ├──📁buttons/
+│       ├──📁common/
+│       │   └── phone_input_field.dart
+│       │
+│       ├──📁dialogs/
+│       │   ├── crop_dialog.dart
+│       │   ├── measure_dialog.dart
+│       │   └── room_dialog.dart
+│       ├──📁rawing/
+│       └──📁error/
+│           └── error_widget.dart 
+│
+└──📁 utils/
+    ├──📁calculators/
+    ├──📁formatters/
+    ├──📁helpers/
+    ├──📁validators/
+    └── utils.dart

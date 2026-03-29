@@ -1,0 +1,1703 @@
+// library main; // <-- Bu satıra gerek yok (Dart 3 sonrası opsiyonel, ama kalması da sorun yaratmaz)
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Riverpod sağlayıcı altyapısı
+import 'core/theme/app_theme.dart'; // Uygulamanın tema dosyası (light/dark temalar)
+import 'presentation/pages/home_page.dart'; // Giriş sayfası (HomePage)
+
+void main() {
+  // ProviderScope: Riverpod'un “durum yönetimi” konteyneri
+  // Uygulamanın tümünde provider'ları erişilebilir hale getirir.
+  runApp(const ProviderScope(child: MyApp()));
+}
+
+// Ana uygulama widget'ı
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title:
+          'WinDesign_Craft Pro', // Uygulama başlığı (sistem çubuğunda görünür)
+      debugShowCheckedModeBanner:
+          false, // Sağ üstteki “debug” banner’ını kapatır
+      // 🌗 Tema yönetimi
+      theme: AppTheme.light, // Aydınlık tema
+      darkTheme: AppTheme.dark, // Karanlık tema (isteğe göre kullanılabilir)
+      themeMode: ThemeMode.light, // Şu anda sadece light aktif
+      //home: const RoomListPage(), // İstersen başka sayfayı da başlangıç yapabilirsin
+      home: const HomePage(), // Uygulama açıldığında görülecek ilk sayfa
+    );
+  }
+}
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+import 'package:flutter/material.dart'; // Flutter’ın temel UI bileşenlerini sağlar.
+import 'package:flutter/services.dart'; // SystemNavigator.pop() ve HapticFeedback gibi sistem fonksiyonları için.
+import 'project_form_page.dart'; // "Yeni Proje Oluştur" sayfasına geçiş için gerekli sayfa importu.
+import 'dart:io'
+    show
+        Platform,
+        exit; // Platform tespiti (Android, iOS, Windows...) ve masaüstü çıkışı için 'exit(0)' kullanımı.
+
+// 🏠 Ana giriş ekranı widget'ı — StatelessWidget, çünkü dinamik veri değişimi yok.
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // 📏 Ekran boyutlarını alıyoruz.
+    final Size screenSize = MediaQuery.of(context).size;
+
+    // 📱 Tablet olup olmadığını kontrol eder (örneğin genişlik 600 pikselden fazlaysa tablet kabul edilir)
+    final bool isTablet = screenSize.width > 600;
+
+    // 🔄 Ekranın yatay mı dikey mi olduğunu belirler.
+    final bool isLandscape = screenSize.width > screenSize.height;
+
+    return Scaffold(
+      // Scaffold: AppBar, Body, BottomNavigation gibi yapı taşlarını içeren temel sayfa yapısıdır.
+      body: SafeArea(
+        // SafeArea: Çentik (notch) veya sistem çubuğu alanlarına girmeyi engeller.
+        child: AnimatedContainer(
+          // AnimatedContainer: Boyut veya yer değiştiğinde yumuşak animasyon sağlar.
+          duration: const Duration(milliseconds: 500),
+          // Cihaz yatay veya dikeyse ona uygun layout çağrılır.
+          child: isLandscape
+              ? _buildLandscapeLayout(context, isTablet)
+              : _buildPortraitLayout(context, isTablet),
+        ),
+      ),
+    );
+  }
+
+  // 📱 Dikey düzen (Portrait)
+  Widget _buildPortraitLayout(BuildContext context, bool isTablet) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildHeaderSection(
+          context,
+          isTablet,
+          false,
+        ), // Üst kısım (logo, başlık)
+        _buildButtonSection(context, isTablet, false), // Ortadaki butonlar
+        _buildFooterSection(context, false), // Alt bilgi
+      ],
+    );
+  }
+
+  // 🌅 Yatay düzen (Landscape)
+  Widget _buildLandscapeLayout(BuildContext context, bool isTablet) {
+    return Row(
+      children: [
+        // Sol sütun: Logo ve footer
+        Expanded(
+          flex: 2, // Sol alan genişliği
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildHeaderSection(context, isTablet, true),
+              _buildFooterSection(context, true),
+            ],
+          ),
+        ),
+        // Sağ sütun: Butonlar
+        Expanded(flex: 3, child: _buildButtonSection(context, isTablet, true)),
+      ],
+    );
+  }
+
+  // 🖼️ Üst bölüm (Logo ve başlık)
+  Widget _buildHeaderSection(
+    BuildContext context,
+    bool isTablet,
+    bool isLandscape,
+  ) {
+    // Ekran konumuna göre logo, başlık ve alt başlık boyutlarını dinamik belirleme
+    double logoSize = isLandscape
+        ? (isTablet ? 120 : 100)
+        : (isTablet ? 220 : 180);
+
+    double titleSize = isLandscape
+        ? (isTablet ? 20 : 18)
+        : (isTablet ? 32 : 24);
+
+    double subtitleSize = isLandscape
+        ? (isTablet ? 14 : 12)
+        : (isTablet ? 16 : 14);
+
+    return Flexible(
+      flex: isLandscape ? 1 : 3,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(height: isLandscape ? 20 : 50),
+          // Logo
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            width: logoSize,
+            height: logoSize,
+            child: Image.asset(
+              'assets/logo.png',
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Başlık
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 500),
+            style: Theme.of(context).textTheme.displayMedium!.copyWith(
+              fontSize: titleSize,
+              letterSpacing: 1.2,
+            ),
+            child: const Text('WinDesign_Craft Pro'),
+          ),
+          const SizedBox(height: 8),
+          // Alt başlık
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 700),
+            opacity: 0.7,
+            child: Text(
+              'PROFESYONEL PVC TASARIMI',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                fontSize: subtitleSize,
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          if (isLandscape) const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // 🔘 Orta bölüm (Butonlar)
+  Widget _buildButtonSection(
+    BuildContext context,
+    bool isTablet,
+    bool isLandscape,
+  ) {
+    return Flexible(
+      flex: isLandscape ? 3 : 4,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildThemeButton(
+            text: 'YENİ PROJE OLUŞTUR',
+            onTap: () => _handleButtonTap(context, 0),
+            isLandscape: isLandscape,
+          ),
+          SizedBox(height: isLandscape ? 12 : 16),
+          _buildThemeButton(
+            text: 'PROJELERİM',
+            onTap: () => _handleButtonTap(context, 1),
+            isLandscape: isLandscape,
+          ),
+          SizedBox(height: isLandscape ? 12 : 16),
+          _buildThemeButton(
+            text: 'AYARLAR',
+            onTap: () => _handleButtonTap(context, 2),
+            isLandscape: isLandscape,
+          ),
+          SizedBox(height: isLandscape ? 12 : 16),
+          // Kapatma butonu
+          _buildCloseButton(context, isLandscape),
+          if (isTablet && !isLandscape) const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // 📄 Alt bilgi (Footer)
+  Widget _buildFooterSection(BuildContext context, bool isLandscape) {
+    return Container(
+      padding: isLandscape
+          ? const EdgeInsets.only(left: 20, bottom: 20)
+          : const EdgeInsets.only(bottom: 20),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 500),
+        opacity: 0.8,
+        child: Column(
+          crossAxisAlignment: isLandscape
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
+          children: [
+            Text(
+              'UEK DESIGNER',
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w600,
+                letterSpacing: isLandscape ? 1.0 : 2.0,
+                fontSize: isLandscape ? 12 : 14,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '© 2025 TÜM HAKLARI SAKLIDIR.',
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                letterSpacing: isLandscape ? 0.3 : 0.5,
+                fontSize: isLandscape ? 10 : 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🌈 Tema uyumlu buton (genel buton şablonu)
+  Widget _buildThemeButton({
+    required String text,
+    required VoidCallback onTap,
+    required bool isLandscape,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isLandscape ? 30 : 60),
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          minimumSize: Size(double.infinity, isLandscape ? 50 : 62),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(isLandscape ? 25 : 35),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: isLandscape ? 14 : 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: isLandscape ? 0.8 : 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ❌ Kapatma butonu
+  Widget _buildCloseButton(BuildContext context, bool isLandscape) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isLandscape ? 30 : 60),
+      child: OutlinedButton.icon(
+        onPressed: () => _closeApp(context),
+        icon: Icon(
+          Icons.exit_to_app_rounded,
+          size: isLandscape ? 18 : 20,
+          color: Colors.grey[600],
+        ),
+        label: Text(
+          'UYGULAMADAN ÇIK',
+          style: TextStyle(
+            fontSize: isLandscape ? 14 : 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: isLandscape ? 0.8 : 1.2,
+            color: Colors.grey[600],
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          minimumSize: Size(double.infinity, isLandscape ? 50 : 62),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(isLandscape ? 25 : 35),
+          ),
+          side: BorderSide(color: Colors.grey[400]!),
+        ),
+      ),
+    );
+  }
+
+  // ❌ Uygulamayı kapatma diyaloğu
+  void _closeApp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.exit_to_app_rounded,
+                  size: 48,
+                  color: Colors.grey[700],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Çıkış Yap',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Uygulamadan çıkmak istediğinizden emin misiniz?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    // Vazgeç butonu
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('VAZGEÇ'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Çıkış butonu
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _exitAppSafely(); // Platform uyumlu çıkış
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text('ÇIKIŞ YAP'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 🧠 Platforma göre güvenli çıkış işlemi
+  void _exitAppSafely() {
+    try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        SystemNavigator.pop(); // Mobilde uygulamayı kapatır.
+      } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        exit(0); // Masaüstünde programı sonlandırır.
+      } else {
+        debugPrint("🌐 Web'de uygulama doğrudan kapatılamaz.");
+      }
+    } catch (e) {
+      debugPrint("Çıkış hatası: $e");
+    }
+  }
+
+  // 🎯 Buton tıklama işleyicisi (sayfa yönlendirme)
+  void _handleButtonTap(BuildContext context, int index) {
+    _triggerHapticFeedback(); // Titreşim efekti (isteğe bağlı)
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          switch (index) {
+            case 0:
+              return const ProjectFormPage(); // Yeni proje sayfası
+            case 1:
+              return Container(); // Projelerim (gelecekte eklenecek)
+            case 2:
+              return Container(); // Ayarlar (gelecekte eklenecek)
+            default:
+              return Container();
+          }
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 600),
+      ),
+    );
+  }
+
+  // 📳 Hafif titreşim (isteğe bağlı)
+  void _triggerHapticFeedback() {
+    // HapticFeedback.mediumImpact();
+  }
+}
+
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+import 'package:flutter/material.dart';
+import '../widgets/common/phone_input_field.dart';
+import 'package:flutter/services.dart';
+import 'drawing_management_page.dart';
+
+class ProjectFormPage extends StatefulWidget {
+  const ProjectFormPage({super.key});
+
+  @override
+  State<ProjectFormPage> createState() => _ProjectFormPageState();
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
+}
+
+class CapitalizeEachWordTextFormatter extends TextInputFormatter {
+  String _capitalizeEachWord(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .split(' ')
+        .map(
+          (word) => word.isEmpty
+              ? ''
+              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final newText = _capitalizeEachWord(newValue.text);
+    return newValue.copyWith(text: newText, selection: newValue.selection);
+  }
+}
+
+class _ProjectFormPageState extends State<ProjectFormPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  String _autoGeneratedId = '';
+  String _phoneNumber = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _generateAutoId();
+  }
+
+  void _generateAutoId() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = DateTime.now().microsecondsSinceEpoch % 10000;
+    setState(() {
+      _autoGeneratedId = 'PROJ_${timestamp}_$random';
+    });
+  }
+
+  // ProjectFormPage.dart - _saveProject metodunu güncelleyelim
+  void _saveProject() {
+    if (_formKey.currentState!.validate()) {
+      final projectData = {
+        'id': _autoGeneratedId,
+        'name': _nameController.text,
+        'phone': _phoneNumber,
+        'address': _addressController.text,
+        'description': _descriptionController.text,
+        'createdAt': DateTime.now().toString(),
+      };
+
+      print('Proje Kaydedildi: $projectData');
+
+      // TODO: Veritabanına kaydetme işlemi burada yapılacak
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Proje başarıyla kaydedildi!'),
+          backgroundColor: Colors.green[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      // Yeni: Çizim yönetimi sayfasına yönlendir
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) =>
+              DrawingManagementPage(projectId: _autoGeneratedId),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  // left ve right column widget'larını fonksiyon haline getirelim (reusable)
+  Widget _buildLeftContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Text(
+        //  'Proje ID: $_autoGeneratedId',
+        //  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+        //    color: Colors.grey[600],
+        //   fontStyle: FontStyle.italic,
+        //  ),
+        //),//*
+        TextFormField(
+          controller: _nameController,
+          decoration: InputDecoration(
+            labelText: 'Ad Soyad',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          inputFormatters: [UpperCaseTextFormatter()],
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          validator: (value) {
+            if (value == null || value.isEmpty)
+              return 'Lütfen ad soyad giriniz';
+            if (value.split(' ').length < 2)
+              return 'Lütfen ad ve soyad giriniz';
+            return null;
+          },
+        ),
+        const SizedBox(height: 20),
+        PhoneInputField(onChanged: (value) => _phoneNumber = value),
+        const SizedBox(height: 20),
+        TextFormField(
+          controller: _addressController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: 'Adres',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          inputFormatters: [CapitalizeEachWordTextFormatter()],
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Lütfen adres giriniz';
+            if (value.length < 10) return 'Lütfen daha detaylı adres giriniz';
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRightContent() {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _descriptionController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: 'Açıklama',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _saveProject,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'PROJEYİ KAYDET',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'İPTAL',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final padding = const EdgeInsets.all(20.0);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Yeni Proje Oluştur'),
+        centerTitle: true,
+      ),
+      body: Form(
+        key: _formKey,
+        child: Padding(
+          padding: padding,
+          child: isLandscape
+              // --- YATAY: Row içinde Expanded ile iki sütun, her sütun kendi içinde scrollable
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sol sütun (kaydırılabilir)
+                    Expanded(
+                      flex: 1,
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: isLandscape ? 30 : 0,
+                        ), // 🧭 sadece yatayda içe al
+                        child: SingleChildScrollView(
+                          child: _buildLeftContent(),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 20),
+                    // Sağ sütun (kaydırılabilir)
+                    Expanded(
+                      child: SingleChildScrollView(child: _buildRightContent()),
+                    ),
+                  ],
+                )
+              // --- DİKEY: SingleChildScrollView -> Column
+              : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLeftContent(),
+                      const SizedBox(height: 20),
+                      _buildRightContent(),
+                    ],
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+library app_theme; // Bu dosyanın bir Dart kütüphanesi olduğunu belirtir. Projede import ile kullanılmasını sağlar.
+
+import 'package:flutter/material.dart'; // Flutter'ın Material bileşenleri ve ThemeData, ColorScheme vb. için gerekli paket.
+
+class AppTheme {
+  // ----- Tema için kullanılacak sabit tohum rengi (seed color) -----
+  // Material 3'te renk paletini otomatik türetmek için bir "seed" (tohum) rengimiz olur.
+  // Burada önceki temadaki mavi tonuna yakın, sabit bir Color kullanıyoruz.
+  static const Color _seedColor = Color(
+    0xFF1565C0,
+  ); // Colors.blue[800] yaklaşık değeri.
+
+  // -------------------- Açık (Light) Tema --------------------
+  static final ThemeData light = ThemeData(
+    // Material 3'ü etkinleştirir. Bu, yeni bileşen stilleri ve renk/tipografi yaklaşımlarını kullanır.
+    useMaterial3: true,
+
+    // Material 3'ün önerdiği şekilde "seed" renginden bir ColorScheme oluşturuyoruz.
+    // brightness: Brightness.light ile açık tema olduğunu belirtiyoruz.
+    // copyWith ile bazı ana alanları (arka plan, surface, vs.) eskisinde olduğu gibi özelleştiriyoruz.
+    colorScheme:
+        ColorScheme.fromSeed(
+          seedColor: _seedColor,
+          brightness: Brightness.light,
+        ).copyWith(
+          // Uygulama genel arka planı (örn. Scaffold arka planı) için beyaz kullan.
+          background: Colors.white,
+          // Arka plan üstündeki yazı/ikon rengi — koyu gri (okunaklı olsun diye).
+          onBackground: Colors.grey[800]!,
+          // Kart ve yüzey rengi (surface) beyaz.
+          surface: Colors.white,
+          // Surface üstündeki yazı/ikon rengi.
+          onSurface: Colors.grey[800]!,
+          // Temel / primary rengi buraya özel koyuyoruz (istersek seed'in ürettiğinden farklı yapabiliriz).
+          primary: Colors.grey[300]!,
+          // primary üstündeki kontrast rengi (örn. primary arka plan üzerindeki ikon/başlık rengi).
+          onPrimary: _seedColor,
+          // İkincil renk (secondary) ve üstündeki yazı/ikon rengi.
+          secondary: Colors.grey[500]!,
+          onSecondary: Colors.grey[800]!,
+        ),
+
+    // Platforma göre görsel yoğunluğu (padding/spacing'leri hafif optimize eder).
+    visualDensity: VisualDensity.adaptivePlatformDensity,
+
+    // -------------------- Yazı Tipi (Typography) --------------------
+    // Uygulama genelinde kullanılacak metin stillerini tanımlıyoruz.
+    // Material 3 ile gelmiş Typography stilleri kullanılabilir; burada mevcut TextTheme'i koruyup
+    // açık ve anlaşılır boyutlar/rengeler atıyoruz.
+    textTheme: TextTheme(
+      // Büyük başlık/Display için stil
+      displayLarge: TextStyle(
+        fontSize: 24.0, // piksel cinsinden metin boyutu
+        fontWeight: FontWeight.bold, // kalınlık: bold
+        color: Colors.grey[800], // rengi koyu gri
+      ),
+      // Orta büyük başlık
+      displayMedium: TextStyle(
+        fontSize: 20.0,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey[800],
+      ),
+      // Küçük başlık
+      displaySmall: TextStyle(
+        fontSize: 18.0,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey[800],
+      ),
+      // Normal büyük gövde metni
+      bodyLarge: TextStyle(fontSize: 16.0, color: Colors.grey[800]),
+      // Normal gövde metni
+      bodyMedium: TextStyle(fontSize: 14.0, color: Colors.grey[800]),
+      // Küçük metin (örn. yardımcı/ek bilgi)
+      bodySmall: TextStyle(fontSize: 12.0, color: Colors.grey[600]),
+      // Orta boy başlık/başlıkçık (title)
+      titleMedium: TextStyle(
+        fontSize: 16.0,
+        fontWeight: FontWeight.w500,
+        color: Colors.grey[800],
+      ),
+      // Küçük başlıkçık
+      titleSmall: TextStyle(fontSize: 14.0, color: Colors.grey[600]),
+    ),
+
+    // -------------------- AppBar (Üst Çubuk) Teması --------------------
+    appBarTheme: AppBarTheme(
+      // Başlığı ortala (Android / iOS tutarlılığı için)
+      centerTitle: true,
+      // AppBar gölgesi yüksekliği
+      elevation: 2,
+      // Kaydırma altındayken (scrolledUnder) daha yüksek gölge
+      scrolledUnderElevation: 4,
+      // AppBar arka planı — açık tema için beyaz
+      backgroundColor: Colors.white,
+      // AppBar içindeki metin ve ikonların rengi
+      foregroundColor: Colors.grey[800]!,
+      // Başlık için özel metin stili
+      titleTextStyle: TextStyle(
+        fontSize: 18.0,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey[800],
+      ),
+    ),
+
+    // -------------------- ElevatedButton (Yükseltilmiş Buton) Teması --------------------
+    // Material 3'te ElevatedButton görünümü yeni tasarım kurallarına göre değişse de,
+    // burada stil ayarlarını ButtonStyle veya styleFrom ile veriyoruz.
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        // Buton arka plan rengi
+        backgroundColor: Colors.grey[300],
+        // Buton üzerindeki yazı/ikon rengi
+        foregroundColor: _seedColor,
+        // Yazı tipi boyutu ve ağırlığı
+        textStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+        // İç dolgu (padding)
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        // Köşe yuvarlatma
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        // Minimum buton boyutu (genişlik, yükseklik)
+        minimumSize: Size(200, 62),
+      ),
+    ),
+
+    // -------------------- TextButton (Yazı Butonu) Teması --------------------
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        // Metin rengi
+        foregroundColor: _seedColor,
+        // Metin stili
+        textStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+      ),
+    ),
+
+    // -------------------- OutlinedButton (Çerçeveli Buton) Teması --------------------
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        // Çerçeve ve metin rengi
+        foregroundColor: _seedColor,
+        side: BorderSide(color: _seedColor),
+        // Metin stili
+        textStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+        // İç dolgu
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        // Köşe yuvarlatma
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+
+    // -------------------- Card Teması --------------------
+    // Kart bileşenleri için genel görünüm
+    cardTheme: CardThemeData(
+      // Kart gölgesi (elevation)
+      elevation: 2,
+      // Kart arka plan rengi
+      color: Colors.white,
+      // Kartın şekli (yuvarlatılmış köşeler)
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+
+    // -------------------- Dialog (Açılır Pencere) Teması --------------------
+    dialogTheme: DialogThemeData(
+      // Dialog gölgesi
+      elevation: 4,
+      // Dialog arka plan rengi
+      backgroundColor: Colors.white,
+      // Köşe yuvarlatma
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      // Başlık metin stili
+      titleTextStyle: TextStyle(
+        fontSize: 18.0,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey[800],
+      ),
+      // İçerik metin stili
+      contentTextStyle: TextStyle(fontSize: 14.0, color: Colors.grey[800]),
+    ),
+
+    // -------------------- Input (TextField vb.) Teması --------------------
+    inputDecorationTheme: InputDecorationTheme(
+      // Varsayılan border (çerçeve)
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      // Etkin olmayan durumdaki border
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      // Odaklanmış (focus) border
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: _seedColor),
+      ),
+      // Hata durumundaki border
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      // Odaklı hata border
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      // Arka plan doldurulsun mu (TextField içini doldurma)
+      filled: true,
+      // Doldurma rengi (hafif gri)
+      fillColor: Colors.grey[50],
+      // Label (etiket) stil rengi
+      labelStyle: TextStyle(color: Colors.grey[700]),
+      // Hint (örnek metin) stili
+      hintStyle: TextStyle(color: Colors.grey[500]),
+      // İçerik padding (metin ve ikon arasındaki boşluk)
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      // Prefix icon rengi (örn. TextField içindeki ikon)
+      prefixIconColor: Colors.grey[600],
+    ),
+
+    // -------------------- Divider (Bölücü) Teması --------------------
+    dividerTheme: DividerThemeData(
+      // Bölücü rengi
+      color: Colors.grey[300],
+      // Kalınlık
+      thickness: 1,
+      // Boşluk (üst-alt)
+      space: 1,
+    ),
+  );
+
+  // -------------------- Koyu (Dark) Tema --------------------
+  static final ThemeData dark = ThemeData(
+    // Material 3 modunu açık tutuyoruz (koyu olarak çalışacak şekilde)
+    useMaterial3: true,
+
+    // Koyu tonlarda bir ColorScheme oluşturuyoruz. seedColor aynı tutuldu, brightness dark.
+    colorScheme:
+        ColorScheme.fromSeed(
+          seedColor: _seedColor,
+          brightness: Brightness.dark,
+        ).copyWith(
+          // Koyu tema için arka plan çok koyu gri
+          background: Colors.grey[900],
+          // Arka plan üstündeki yazı için açık gri
+          onBackground: Colors.grey[300],
+          // Primary için koyu gri ton
+          primary: Colors.grey[700],
+          // Primary üstü için daha açık mavi tonu (kontrast)
+          onPrimary: Colors.blue[200]!,
+        ),
+
+    // Platforma göre görsel yoğunluk
+    visualDensity: VisualDensity.adaptivePlatformDensity,
+
+    // AppBar için temel ayarlar (renkleri colorScheme'den alır; ekstra detay eklenebilir)
+    appBarTheme: AppBarTheme(
+      centerTitle: true,
+      elevation: 2,
+      scrolledUnderElevation: 4,
+      // Not: arka plan ve foreground explicit verilmezse colorScheme'e göre alınır.
+    ),
+
+    // Card tema (koyu temaya uygun şekil ve gölge)
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+
+    // Dialog tema (koyu temada şekil, yükseklik vb.)
+    dialogTheme: DialogThemeData(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    ),
+  );
+}
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+// data/models/project_model.dart
+class Project {
+  final String id;
+  final String name;
+  final String phone;
+  final String address;
+  final String description;
+  final String createdAt;
+  final List<String> roomIds; // Projeye ait oda ID'leri
+
+  Project({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.address,
+    required this.description,
+    required this.createdAt,
+    this.roomIds = const [],
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'phone': phone,
+      'address': address,
+      'description': description,
+      'createdAt': createdAt,
+      'roomIds': roomIds,
+    };
+  }
+
+  factory Project.fromMap(Map<String, dynamic> map) {
+    return Project(
+      id: map['id'],
+      name: map['name'],
+      phone: map['phone'],
+      address: map['address'],
+      description: map['description'],
+      createdAt: map['createdAt'],
+      roomIds: List<String>.from(map['roomIds'] ?? []),
+    );
+  }
+
+  Project copyWith({
+    String? name,
+    String? phone,
+    String? address,
+    String? description,
+    List<String>? roomIds,
+  }) {
+    return Project(
+      id: id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      description: description ?? this.description,
+      createdAt: createdAt,
+      roomIds: roomIds ?? this.roomIds,
+    );
+  }
+}
+
+
+
+
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+// presentation/pages/drawing_canvas_page.dart
+import 'package:flutter/material.dart';
+
+class DrawingCanvasPage extends StatefulWidget {
+  final String projectId;
+  final String drawingId;
+
+  const DrawingCanvasPage({
+    super.key,
+    required this.projectId,
+    required this.drawingId,
+  });
+
+  @override
+  State<DrawingCanvasPage> createState() => _DrawingCanvasPageState();
+}
+
+class _DrawingCanvasPageState extends State<DrawingCanvasPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Çizim - ${widget.drawingId}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _saveDrawing,
+            tooltip: 'Çizimi Kaydet',
+          ),
+          IconButton(
+            icon: const Icon(Icons.undo),
+            onPressed: _undo,
+            tooltip: 'Geri Al',
+          ),
+          IconButton(
+            icon: const Icon(Icons.redo),
+            onPressed: _redo,
+            tooltip: 'İleri Al',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Araç çubuğu
+          _buildToolbar(),
+          // Çizim alanı
+          Expanded(
+            child: Container(
+              color: Colors.grey[100],
+              child: Center(
+                child: Text(
+                  'ÇİZİM ALANI - Bu kısım daha sonra özelleştirilecek\n\n'
+                  'Proje ID: ${widget.projectId}\n'
+                  'Çizim ID: ${widget.drawingId}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolbar() {
+    return Container(
+      height: 60,
+      color: Colors.white,
+      child: Row(
+        children: [
+          _buildToolButton(Icons.brush, 'Fırça'),
+          _buildToolButton(Icons.rectangle, 'Dikdörtgen'),
+          _buildToolButton(Icons.circle, 'Daire'),
+          _buildToolButton(Icons.straighten, 'Çizgi'),
+          _buildToolButton(Icons.text_fields, 'Metin'),
+          _buildToolButton(Icons.undo, 'Geri Al'),
+          _buildToolButton(Icons.delete, 'Temizle'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolButton(IconData icon, String tooltip) {
+    return IconButton(
+      icon: Icon(icon),
+      onPressed: () {
+        // Araç seçimi işlevi
+        _selectTool(tooltip);
+      },
+      tooltip: tooltip,
+    );
+  }
+
+  void _selectTool(String tool) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$tool aracı seçildi'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _saveDrawing() {
+    // Çizimi kaydetme işlevi
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Çizim kaydedildi!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _undo() {
+    // Geri alma işlevi
+  }
+
+  void _redo() {
+    // İleri alma işlevi
+  }
+}
+
+
+
+
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+
+
+// presentation/pages/drawing_management_page.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../pages/drawing_canvas_page.dart';
+
+class DrawingManagementPage extends StatefulWidget {
+  final String projectId;
+
+  const DrawingManagementPage({super.key, required this.projectId});
+
+  @override
+  State<DrawingManagementPage> createState() => _DrawingManagementPageState();
+}
+
+class _DrawingManagementPageState extends State<DrawingManagementPage> {
+  List<Drawing> drawings = []; // Çizim listesi
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Proje Çizimleri - ${widget.projectId}'),
+        centerTitle: true,
+      ),
+      body: drawings.isEmpty ? _buildEmptyState() : _buildDrawingList(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _startNewDrawing,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.architecture_outlined, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 20),
+          Text(
+            'Henüz Çizim Yok',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Yeni bir çizim başlatmak için + butonuna tıklayın',
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawingList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: drawings.length,
+      itemBuilder: (context, index) {
+        final drawing = drawings[index];
+        return Card(
+          child: ListTile(
+            leading: const Icon(Icons.architecture),
+            title: Text(drawing.name),
+            subtitle: Text('Oluşturulma: ${drawing.createdAt}'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () => _deleteDrawing(drawing.id),
+            ),
+            onTap: () => _openDrawing(drawing),
+          ),
+        );
+      },
+    );
+  }
+
+  void _startNewDrawing() {
+    // Yeni çizim için isim belirleme dialog'u
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Yeni Çizim'),
+        content: TextFormField(
+          decoration: const InputDecoration(
+            labelText: 'Çizim Adı',
+            hintText: 'Örn: Kat 1 Planı',
+          ),
+          onChanged: (value) {
+            // Çizim adını kaydet
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _createNewDrawing();
+            },
+            child: const Text('Oluştur'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _createNewDrawing() {
+    final newDrawing = Drawing(
+      id: 'DRAW_${DateTime.now().millisecondsSinceEpoch}',
+      projectId: widget.projectId,
+      name: 'Çizim ${drawings.length + 1}',
+      createdAt: DateTime.now().toString(),
+      // Diğer çizim özellikleri
+    );
+
+    setState(() {
+      drawings.add(newDrawing);
+    });
+
+    // Çizim sayfasına yönlendir
+    _openDrawing(newDrawing);
+  }
+
+  void _openDrawing(Drawing drawing) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DrawingCanvasPage(
+          projectId: widget.projectId,
+          drawingId: drawing.id,
+        ),
+      ),
+    );
+  }
+
+  void _deleteDrawing(String drawingId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Çizimi Sil'),
+        content: const Text('Bu çizimi silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                drawings.removeWhere((drawing) => drawing.id == drawingId);
+              });
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Çizim modeli
+class Drawing {
+  final String id;
+  final String projectId;
+  final String name;
+  final String createdAt;
+  final String? updatedAt;
+
+  Drawing({
+    required this.id,
+    required this.projectId,
+    required this.name,
+    required this.createdAt,
+    this.updatedAt,
+  });
+}
+
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'dart:convert';
+
+typedef PhoneChangedCallback = void Function(String phone);
+
+class PhoneInputField extends StatefulWidget {
+  final PhoneChangedCallback? onChanged;
+
+  const PhoneInputField({super.key, this.onChanged});
+
+  @override
+  State<PhoneInputField> createState() => _PhoneInputFieldState();
+}
+
+class _PhoneInputFieldState extends State<PhoneInputField> {
+  final TextEditingController _controller = TextEditingController();
+  MaskTextInputFormatter? _mask;
+
+  String _countryCode = '+90';
+  String _countryShort = 'TR';
+  bool _isLoading = true;
+
+  List<Map<String, String>> _countries = [
+    {'short': 'TR', 'code': '+90'},
+    {'short': 'US', 'code': '+1'},
+    {'short': 'UK', 'code': '+44'},
+    {'short': 'DE', 'code': '+49'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _mask = MaskTextInputFormatter(
+      mask: '$_countryCode (###) ### ## ##',
+      filter: {"#": RegExp(r'[0-9]')},
+      type: MaskAutoCompletionType.lazy,
+    );
+    _controller.text = '$_countryCode (';
+    _loadCountries();
+  }
+
+  // 🔹 Uygulama açıldığında: kayıtlı ülkeleri + varsayılan ülkeyi yükle
+
+  Future<void> _loadCountries() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCountries = prefs.getString('saved_countries');
+    if (savedCountries != null && savedCountries.isNotEmpty) {
+      try {
+        final List<dynamic> decodedList =
+            jsonDecode(savedCountries) as List<dynamic>;
+
+        // Her elemanı güvenli şekilde Map<String,String> formatına çevir
+        final List<Map<String, String>> restored = [];
+        for (final item in decodedList) {
+          if (item is Map) {
+            final Map<String, dynamic> m = Map<String, dynamic>.from(item);
+            final short = (m['short'] ?? '').toString();
+            final code = (m['code'] ?? '').toString();
+            if (short.isNotEmpty && code.isNotEmpty) {
+              restored.add({'short': short, 'code': code});
+            }
+          }
+        }
+
+        if (restored.isNotEmpty) {
+          _countries = restored;
+        }
+      } catch (e, st) {
+        debugPrint('Saved countries parse error: $e\n$st');
+        // Hata varsa varsayılan _countries listesiyle devam et
+      }
+    }
+
+    final savedShort = prefs.getString('selected_country_short');
+    if (savedShort != null) {
+      final country = _countries.firstWhere(
+        (c) => c['short'] == savedShort,
+        orElse: () => _countries[0],
+      );
+      _countryShort = country['short']!;
+      _countryCode = country['code']!;
+    } else {
+      await _setCountryByLocation();
+    }
+
+    _updateMask();
+    setState(() => _isLoading = false);
+  }
+
+  // 🔹 Yeni ülke ekle
+  Future<void> _addNewCountry() async {
+    String short = '';
+    String code = '';
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Yeni Ülke Ekle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'Kısaltma (örn: JP)',
+              ),
+              onChanged: (v) => short = v.toUpperCase(),
+            ),
+            TextField(
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Telefon Kodu (örn: +81)',
+              ),
+              onChanged: (v) => code = v.startsWith('+') ? v : '+$v',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (short.isNotEmpty && code.isNotEmpty) {
+                final exists = _countries.any((c) => c['short'] == short);
+                if (!exists) {
+                  setState(() {
+                    _countries.add({'short': short, 'code': code});
+                  });
+                  await _saveCountries();
+                  _onCountryChanged(short);
+                }
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Ekle'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Ülkeleri SharedPreferences’a kaydet
+  Future<void> _saveCountries() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_countries', jsonEncode(_countries));
+  }
+
+  // 🔹 Konuma göre ülkeyi belirle
+  Future<void> _setCountryByLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+      );
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final countryCode = placemarks.first.isoCountryCode ?? 'TR';
+        final country = _countries.firstWhere(
+          (c) => c['short'] == countryCode,
+          orElse: () => _countries[0],
+        );
+        _countryShort = country['short']!;
+        _countryCode = country['code']!;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('selected_country_short', _countryShort);
+      }
+    } catch (e) {
+      debugPrint("Konum belirleme hatası: $e");
+    }
+  }
+
+  // 🔹 Ülke değiştirildiğinde yapılacaklar
+  void _onCountryChanged(String short) async {
+    final country = _countries.firstWhere(
+      (c) => c['short'] == short,
+      orElse: () => _countries[0],
+    );
+    setState(() {
+      _countryShort = country['short']!;
+      _countryCode = country['code']!;
+    });
+    _updateMask();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selected_country_short', _countryShort);
+  }
+
+  void _updateMask() {
+    _mask = MaskTextInputFormatter(
+      mask: '$_countryCode (###) ### ## ##',
+      filter: {"#": RegExp(r'[0-9]')},
+      type: MaskAutoCompletionType.lazy,
+    );
+    _controller.text = '$_countryCode (';
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: _countryCode.length + 2),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Row(
+      children: [
+        DropdownButton<String>(
+          value: _countryShort,
+          items: [
+            ..._countries.map(
+              (c) => DropdownMenuItem<String>(
+                value: c['short'],
+                child: Text(c['short']!),
+              ),
+            ),
+            const DropdownMenuItem<String>(
+              value: 'ADD_NEW',
+              child: Text('Yeni...'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == 'ADD_NEW') {
+              _addNewCountry();
+            } else if (value != null) {
+              _onCountryChanged(value);
+            }
+          },
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextFormField(
+            controller: _controller,
+            keyboardType: TextInputType.number,
+            inputFormatters: [_mask!],
+            onChanged: (value) {
+              if (widget.onChanged != null) {
+                final unmaskedText = _mask!.getUnmaskedText();
+                widget.onChanged!('$_countryCode$unmaskedText');
+              }
+            },
+            validator: (value) {
+              if (_mask!.getUnmaskedText().length != 10) {
+                return 'Geçerli telefon giriniz';
+              }
+              return null;
+            },
+            decoration: InputDecoration(
+              labelText: 'Telefon',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************
+******************************************************************************

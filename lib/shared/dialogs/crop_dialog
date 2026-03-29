@@ -1,0 +1,211 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../utils/utils.dart';
+import '../../painters/quadrilateral_painter.dart';
+import '../../../data/models/shape_spec.dart';
+
+class CropDialog extends StatefulWidget {
+  final double regionWidth;
+  final double regionHeight;
+  final double initialLeft;
+  final double initialTop;
+  final double initialRight;
+  final double initialBottom;
+  final ShapeSpec originalSpec;
+
+  const CropDialog({
+    super.key,
+    required this.regionWidth,
+    required this.regionHeight,
+    required this.initialLeft,
+    required this.initialTop,
+    required this.initialRight,
+    required this.initialBottom,
+    required this.originalSpec,
+  });
+
+  @override
+  State<CropDialog> createState() => _CropDialogState();
+}
+
+class _CropDialogState extends State<CropDialog> {
+  late TextEditingController _leftCtrl;
+  late TextEditingController _topCtrl;
+  late TextEditingController _rightCtrl;
+  late TextEditingController _bottomCtrl;
+
+  String? _error;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _leftCtrl = TextEditingController(
+      text: widget.initialLeft.round().toString(),
+    );
+    _topCtrl = TextEditingController(
+      text: widget.initialTop.round().toString(),
+    );
+    _rightCtrl = TextEditingController(
+      text: widget.initialRight.round().toString(),
+    );
+    _bottomCtrl = TextEditingController(
+      text: widget.initialBottom.round().toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _leftCtrl.dispose();
+    _topCtrl.dispose();
+    _rightCtrl.dispose();
+    _bottomCtrl.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  double _parse(TextEditingController c, double fallback) {
+    final v = double.tryParse(c.text.replaceAll(',', '.'));
+    return v ?? fallback;
+  }
+
+  void _onFieldChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {});
+    });
+  }
+
+  Widget _numberField(String label, TextEditingController controller) {
+    return Expanded(
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+        ],
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 6,
+          ),
+          suffixText: 'mm',
+        ),
+        onChanged: (_) => _onFieldChanged(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final left = _parse(_leftCtrl, widget.initialLeft);
+    final top = _parse(_topCtrl, widget.initialTop);
+    final right = _parse(_rightCtrl, widget.initialRight);
+    final bottom = _parse(_bottomCtrl, widget.initialBottom);
+
+    _error = validateCropValues(
+      widget.regionWidth,
+      widget.regionHeight,
+      left,
+      top,
+      right,
+      bottom,
+    );
+
+    final previewSpec = ShapeSpec(
+      leftHeight: widget.originalSpec.leftHeight,
+      rightHeight: widget.originalSpec.rightHeight,
+      topWidth: widget.originalSpec.topWidth,
+      bottomWidth: widget.originalSpec.bottomWidth,
+      showDimensions: true,
+      resizeDirection: widget.originalSpec.resizeDirection,
+      points: buildCropPolygon(
+        widget.regionWidth,
+        widget.regionHeight,
+        left,
+        top,
+        right,
+        bottom,
+      ),
+    );
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.purple.shade50,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Kırpma —  (mm)",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _numberField("Sol (L)", _leftCtrl),
+                  const SizedBox(width: 12),
+                  _numberField("Üst (T)", _topCtrl),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _numberField("Sağ (R)", _rightCtrl),
+                  const SizedBox(width: 12),
+                  _numberField("Alt (B)", _bottomCtrl),
+                ],
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ),
+              const SizedBox(height: 30),
+              Container(
+                width: 160,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: CustomPaint(painter: ShapePainter(previewSpec)),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    child: const Text("İptal"),
+                    onPressed: () => Navigator.pop(context, null),
+                  ),
+                  ElevatedButton(
+                    child: const Text("Uygula"),
+                    onPressed: _error != null
+                        ? null
+                        : () {
+                            Navigator.pop(context, previewSpec);
+                          },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

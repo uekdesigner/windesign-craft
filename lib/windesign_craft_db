@@ -1,0 +1,18 @@
+
+
+📦 windesign_craft.db
+├── 🗂️ projects
+│   ├── 🔑 id (TEXT) - PRIMARY KEY
+│   ├── name (TEXT)
+│   ├── phone (TEXT)
+│   ├── address (TEXT)
+│   ├── description (TEXT)
+│   └── created_at (TEXT)
+│
+└── 🗂️ drawings
+    ├── 🔑 id (TEXT) - PRIMARY KEY
+    ├── project_id (TEXT) - FOREIGN KEY → projects.id
+    ├── name (TEXT)
+    ├── created_at (TEXT)
+    ├── updated_at (TEXT)
+    └── drawing_data (TEXT)
