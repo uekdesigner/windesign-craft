@@ -1,32 +1,186 @@
+// lib/features/drawing/painters/quadrilateral_painter.dart
+
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../models/shape_spec.dart';
+import '../geometry/shape_crop_geometry.dart';
+import 'painter_helpers.dart';
+import 'shape_dimension_painter.dart';
+import 'shape_element_painter.dart';
+
+export 'shape_dimension_painter.dart' show MmToPx;
 
 class ShapePainter extends CustomPainter {
   final ShapeSpec spec;
   final Color? overrideStrokeColor;
   final double? overrideStrokeWidth;
+  final String? selectedElementId;
+  final bool showInternalElements;
+  final double? previewHorizontalLineY;
+  final double? previewVerticalLineX;
+  final double? previewShortHorizontalLineY;
+  final double? previewShortVerticalLineX;
+  final List<SideAttachment> sideAttachments;
+
+  // ── Yan panel drag önizlemesi (gölge) ──
+  // sidePreviewSide: hangi panel ('left' | 'right')
+  // sidePreviewLocalY: yatay çizgi için panel-yerel Y (0 = alt)
+  // sidePreviewLocalX: dikey çizgi için panel-yerel X (0 = sol)
+  final String? sidePreviewSide;
+  final double? sidePreviewLocalY;
+  final double? sidePreviewLocalX;
 
   const ShapePainter(
     this.spec, {
     this.overrideStrokeColor,
     this.overrideStrokeWidth,
+    this.selectedElementId,
+    this.showInternalElements = true,
+    this.previewHorizontalLineY,
+    this.previewVerticalLineX,
+    this.previewShortHorizontalLineY,
+    this.previewShortVerticalLineX,
+    this.sideAttachments = const [],
+    this.sidePreviewSide,
+    this.sidePreviewLocalY,
+    this.sidePreviewLocalX,
   });
+
+  // ── mmToPx: sol panel offset'ini hesaba katar ──
+
+  Offset _mmToPx(Offset mm, double scale, Offset offset) {
+    double leftExtra = 0;
+    for (final a in spec.sideAttachments) {
+      if (a.side == 'left') leftExtra = math.max(leftExtra, a.width);
+    }
+    return Offset(
+      (mm.dx + leftExtra) * scale + offset.dx,
+      (spec.baseHeight - mm.dy) * scale + offset.dy,
+    );
+  }
+
+  // ── SCALE / OFFSET ──
+
+  double _calculateScale(Size canvasSize, bool isThumbnail) {
+    final bounds = ShapeCropGeometry.totalBounds(spec);
+    final padding = isThumbnail ? 0.8 : 0.75;
+    return math.min(
+      (canvasSize.width * padding) / bounds.width,
+      (canvasSize.height * padding) / bounds.height,
+    );
+  }
+
+  Offset _calculateCenterOffset(
+    Size canvasSize,
+    double scale,
+    bool isThumbnail,
+  ) {
+    final bounds = ShapeCropGeometry.totalBounds(spec);
+    final scaledW = bounds.width * scale;
+    final scaledH = bounds.height * scale;
+
+    if (isThumbnail) {
+      return Offset(
+        (canvasSize.width - scaledW) / 2,
+        (canvasSize.height - scaledH) / 2,
+      );
+    }
+    return Offset(
+      (canvasSize.width - scaledW) / 2 + 20,
+      (canvasSize.height - scaledH) / 2 - 30,
+    );
+  }
+
+  // ── PAINT ──
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = _calculateScale(size);
-    final offset = _calculateCenterOffset(size, scale);
+    final isThumbnail = size.width < 150 || !showInternalElements;
+    final scale = _calculateScale(size, isThumbnail);
+    final offset = _calculateCenterOffset(size, scale, isThumbnail);
+
     final pointsMm = spec.getPolygonPoints();
     final pointsPx = pointsMm.map((p) => _mmToPx(p, scale, offset)).toList();
-
     if (pointsPx.length < 4) return;
 
-    final path = Path();
+    _validateCropValues();
+    final mainPath = _createMainPath(pointsPx);
 
-    // 🛡️ GÜVENLİ: Hem 4 hem 8 nokta destekler
+    if (!isThumbnail) _drawBaseRectangle(canvas, scale, offset);
+    _drawMainShape(canvas, mainPath);
+
+    if (showInternalElements && !isThumbnail) {
+      if (previewHorizontalLineY != null)
+        ShapeElementPainter.drawPreviewHorizontalLine(
+          canvas,
+          spec,
+          scale,
+          offset,
+          previewHorizontalLineY!,
+          _mmToPx,
+        );
+      if (previewVerticalLineX != null)
+        ShapeElementPainter.drawPreviewVerticalLine(
+          canvas,
+          spec,
+          scale,
+          offset,
+          previewVerticalLineX!,
+          _mmToPx,
+        );
+      ShapeElementPainter.drawInternalElements(
+        canvas,
+        spec,
+        scale,
+        offset,
+        mainPath,
+        _mmToPx,
+        selectedElementId,
+      );
+    }
+
+    if (previewShortHorizontalLineY != null)
+      ShapeElementPainter.drawPreviewShortHorizontalLine(
+        canvas,
+        spec,
+        scale,
+        offset,
+        previewShortHorizontalLineY!,
+        _mmToPx,
+      );
+    if (previewShortVerticalLineX != null)
+      ShapeElementPainter.drawPreviewShortVerticalLine(
+        canvas,
+        spec,
+        scale,
+        offset,
+        previewShortVerticalLineX!,
+        _mmToPx,
+      );
+
+    // ── YAN PANEL DİKDÖRTGENLERİ ──
+    _drawSidePanelRects(canvas, pointsPx, scale, offset);
+
+    // ── ÖLÇÜLER ──
+    if (spec.showDimensions && !isThumbnail) {
+      ShapeDimensionPainter.drawAllDimensions(
+        canvas: canvas,
+        spec: spec,
+        pointsPx: pointsPx,
+        sideAttachments: sideAttachments,
+        scale: scale,
+        offset: offset,
+        mmToPx: _mmToPx,
+        showInternalElements: showInternalElements,
+      );
+    }
+  }
+
+  // ── ANA ŞEKİL ──
+
+  Path _createMainPath(List<Offset> pointsPx) {
+    final path = Path();
     if (pointsPx.length >= 8) {
-      // Yeni sistem (8 nokta - X/Y ayrı)
       path.moveTo(pointsPx[0].dx, pointsPx[0].dy);
       path.lineTo(pointsPx[1].dx, pointsPx[1].dy);
       path.lineTo(pointsPx[7].dx, pointsPx[7].dy);
@@ -36,200 +190,226 @@ class ShapePainter extends CustomPainter {
       path.lineTo(pointsPx[3].dx, pointsPx[3].dy);
       path.lineTo(pointsPx[2].dx, pointsPx[2].dy);
     } else {
-      // Eski sistem (4 nokta)
       path.moveTo(pointsPx[0].dx, pointsPx[0].dy);
       for (int i = 1; i < pointsPx.length; i++) {
         path.lineTo(pointsPx[i].dx, pointsPx[i].dy);
       }
     }
     path.close();
+    return path;
+  }
 
-    final fillPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(path, fillPaint);
+  void _drawMainShape(Canvas canvas, Path path) {
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = overrideStrokeColor ?? spec.strokeColor
+        ..strokeWidth = overrideStrokeWidth ?? spec.strokeWidth
+        ..style = PaintingStyle.stroke,
+    );
+  }
 
-    // 4. Ana hatları çiz
-    final strokePaint = Paint()
-      ..color = overrideStrokeColor ?? spec.strokeColor
-      ..strokeWidth = overrideStrokeWidth ?? spec.strokeWidth
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, strokePaint);
+  void _drawBaseRectangle(Canvas canvas, double scale, Offset offset) {
+    double leftExtra = 0;
+    double rightExtra = 0;
 
-    // 5. Base dikdörtgeni (gri, noktalı - referans için)
-    _drawBaseRectangle(canvas, size, scale, offset);
-
-    // 6. İç çizgileri çiz (varsa)
-    _drawInternalElements(canvas, scale, offset);
-
-    // 7. Ölçüleri yaz
-    if (spec.showDimensions) {
-      _drawDimensions(canvas, pointsPx);
+    for (final a in spec.sideAttachments) {
+      if (a.side == 'left') leftExtra = math.max(leftExtra, a.width);
+      if (a.side == 'right') rightExtra = math.max(rightExtra, a.width);
     }
-  }
 
-  /// MM'den Pixel'a dönüşüm
-  double _calculateScale(Size canvasSize) {
-    final bounds = spec.boundingSize;
-    const padding = 0.9;
-    final scaleX = (canvasSize.width * padding) / bounds.width;
-    final scaleY = (canvasSize.height * padding) / bounds.height;
-    return math.min(scaleX, scaleY);
-  }
+    // _mmToPx'i kullanmak yerine direkt piksel hesabı yap
+    // Çünkü _mmToPx spec.baseHeight baz alıyor,
+    // yan panel daha yüksekse kayma olur
 
-  Offset _calculateCenterOffset(Size canvasSize, double scale) {
-    final bounds = spec.boundingSize;
-    final scaledW = bounds.width * scale;
-    final scaledH = bounds.height * scale;
-    return Offset(
-      (canvasSize.width - scaledW) / 2,
-      (canvasSize.height - scaledH) / 2,
+    // Ana şeklin piksel sol-üst köşesi
+    final mainTopLeftPx = _mmToPx(Offset(0, spec.baseHeight), scale, offset);
+
+    // Toplam genişlik ve yükseklik piksel olarak
+    final totalWidthPx = (spec.baseWidth + leftExtra + rightExtra) * scale;
+
+    // Yükseklik: en yüksek paneli baz al
+    double maxHeight = spec.baseHeight;
+    for (final a in spec.sideAttachments) {
+      maxHeight = math.max(maxHeight, a.height);
+    }
+    final totalHeightPx = maxHeight * scale;
+
+    // Sol kenar: mainTopLeft'ten leftExtra kadar sola
+    final rectLeft = mainTopLeftPx.dx - leftExtra * scale;
+    final rectTop = mainTopLeftPx.dy; // ana şeklin üst kenarıyla hizalı
+
+    canvas.drawRect(
+      Rect.fromLTWH(rectLeft, rectTop, totalWidthPx, totalHeightPx),
+      Paint()
+        ..color = Colors.grey.shade300
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke,
     );
   }
+  // ============================================================
+  // SADECE _drawSidePanelRects metodunu bununla değiştir.
+  // Dosyanın geri kalanı — paint(), _createMainPath(),
+  // _drawMainShape(), shouldRepaint() vs — HİÇ DEĞİŞMEZ.
+  // ============================================================
 
-  Offset _mmToPx(Offset mm, double scale, Offset offset) {
-    // Flutter'da Y=0 üstte, bizim modelde Y=0 altta
-    return Offset(
-      mm.dx * scale + offset.dx,
-      (spec.baseHeight - mm.dy) * scale + offset.dy,
-    );
-  }
-
-  void _drawBaseRectangle(
+  void _drawSidePanelRects(
     Canvas canvas,
-    Size size,
+    List<Offset> pointsPx,
     double scale,
     Offset offset,
   ) {
-    final baseRect = Rect.fromLTWH(
-      offset.dx,
-      offset.dy,
-      spec.baseWidth * scale,
-      spec.baseHeight * scale,
-    );
+    for (final attach in sideAttachments) {
+      final mainLeft = pointsPx.map((p) => p.dx).reduce(math.min);
+      final mainTop = pointsPx.map((p) => p.dy).reduce(math.min);
+      final mainRight = pointsPx.map((p) => p.dx).reduce(math.max);
 
-    final paint = Paint()
-      ..color = Colors.grey.shade300
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+      // ── mmToPx ile doğru hesapla ──────────────────────────
+      // Y ekseni ters: yTop → küçük px, yBottom → büyük px
+      final double pLeft, pTop, pRight, pBottom;
 
-    canvas.drawRect(baseRect, paint);
-  }
+      if (attach.side == 'right') {
+        pLeft = mainRight;
+        pTop = mainTop; // ana şeklin üst kenarıyla hizalı
 
-  void _drawInternalElements(Canvas canvas, double scale, Offset offset) {
-    final paint = Paint()
-      ..color = Colors.red.shade400
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+        // attach.height mm → px: mmToPx y eksenini ters çevirdiği için
+        // panelin alt kenarı = mmToPx(y=0), üst kenarı = mmToPx(y=attach.height)
+        // Bunu doğrudan scale ile hesapla:
+        final topMm = _mmToPx(Offset(0, attach.height), scale, offset);
+        final bottomMm = _mmToPx(Offset(0, 0), scale, offset);
+        final heightPx = bottomMm.dy - topMm.dy; // pozitif fark
 
-    for (final element in spec.internalElements) {
-      final start = _mmToPx(element.position, scale, offset);
+        pRight = pLeft + attach.width * scale;
+        pBottom = pTop + heightPx;
+      } else {
+        // left
+        pRight = mainLeft;
+        pTop = mainTop;
 
-      switch (element.type) {
-        case InternalElementType.verticalLine:
+        final topMm = _mmToPx(Offset(0, attach.height), scale, offset);
+        final bottomMm = _mmToPx(Offset(0, 0), scale, offset);
+        final heightPx = bottomMm.dy - topMm.dy;
+
+        pLeft = pRight - attach.width * scale;
+        pBottom = pTop + heightPx;
+      }
+
+      final panelRect = Rect.fromLTRB(pLeft, pTop, pRight, pBottom);
+
+      // ── Çerçeve ──
+      canvas.drawRect(
+        panelRect,
+        Paint()
+          ..color = overrideStrokeColor ?? Colors.black
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = overrideStrokeWidth ?? 2,
+      );
+
+      // ── Drag önizleme (gölge) — yan panel ──
+      // Sürükleme sırasında çizginin nereye düşeceğini panelin İÇİNDE
+      // gösterir. Eskiden değer ana şekil mm'i gibi yorumlanıp gölge
+      // ana şeklin üzerinde çiziliyordu; artık panelRect'e göre çizilir.
+      if (sidePreviewSide == attach.side) {
+        final previewPaint = Paint()
+          ..color = Colors.grey.withValues(alpha: 0.6)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+
+        if (sidePreviewLocalY != null) {
+          final h = attach.height <= 0 ? 1.0 : attach.height;
+          final fy = (sidePreviewLocalY! / h).clamp(0.0, 1.0);
+          final py = panelRect.bottom - fy * panelRect.height;
           canvas.drawLine(
-            start,
-            Offset(start.dx, start.dy + element.size.height * scale),
-            paint,
+            Offset(panelRect.left, py),
+            Offset(panelRect.right, py),
+            previewPaint,
           );
-          break;
-        case InternalElementType.horizontalLine:
+        }
+        if (sidePreviewLocalX != null) {
+          final w = attach.width <= 0 ? 1.0 : attach.width;
+          final fx = (sidePreviewLocalX! / w).clamp(0.0, 1.0);
+          final px = panelRect.left + fx * panelRect.width;
           canvas.drawLine(
-            start,
-            Offset(start.dx + element.size.width * scale, start.dy),
-            paint,
+            Offset(px, panelRect.top),
+            Offset(px, panelRect.bottom),
+            previewPaint,
           );
-          break;
-        case InternalElementType.triangle:
-          final path = Path()
-            ..moveTo(start.dx, start.dy)
-            ..lineTo(start.dx + element.size.width * scale, start.dy)
-            ..lineTo(
-              start.dx + element.size.width * scale / 2,
-              start.dy + element.size.height * scale,
-            )
-            ..close();
-          canvas.drawPath(path, paint);
-          break;
-        case InternalElementType.parallelLines:
-          final spacing = 5.0;
-          canvas.drawLine(
-            start,
-            Offset(start.dx + element.size.width * scale, start.dy),
-            paint,
-          );
-          canvas.drawLine(
-            Offset(start.dx, start.dy + spacing),
-            Offset(start.dx + element.size.width * scale, start.dy + spacing),
-            paint,
-          );
-          break;
+        }
+      }
+
+      // ── İç elemanlar ──
+      if (attach.internalElements.isNotEmpty) {
+        final bounds = spec.boundingSize;
+        final xShift = (spec.baseWidth - bounds.width) / 2;
+        final mainLeftMm = xShift;
+        final mainRightMm = xShift + bounds.width;
+
+        final Offset localToGlobal;
+        if (attach.side == 'left') {
+          localToGlobal = Offset(mainLeftMm - attach.width, 0);
+        } else {
+          localToGlobal = Offset(mainRightMm, 0);
+        }
+
+        ShapeElementPainter.drawSidePanelElements(
+          canvas,
+          attach,
+          panelRect,
+          localToGlobal,
+          scale,
+          offset,
+          _mmToPx,
+        );
       }
     }
   }
+  // ── DOĞRULAMA ──
 
-  void _drawDimensions(Canvas canvas, List<Offset> pointsPx) {
-    if (pointsPx.length < 8) return;
-
-    // Kenarları ve ölçüleri çiz
-    _drawEdgeLabel(
-      canvas,
-      pointsPx[0],
-      pointsPx[2],
-      spec.baseWidth.toInt().toString(),
-    ); // Üst
-    _drawEdgeLabel(
-      canvas,
-      pointsPx[1],
-      pointsPx[7],
-      spec.baseHeight.toInt().toString(),
-    ); // Sol
-    _drawEdgeLabel(
-      canvas,
-      pointsPx[6],
-      pointsPx[5],
-      spec.baseWidth.toInt().toString(),
-    ); // Alt
-    _drawEdgeLabel(
-      canvas,
-      pointsPx[3],
-      pointsPx[4],
-      spec.baseHeight.toInt().toString(),
-    ); // Sağ
-  }
-
-  void _drawEdgeLabel(Canvas canvas, Offset p1, Offset p2, String text) {
-    final midPoint = Offset((p1.dx + p2.dx) / 2, (p1.dy + p2.dy) / 2);
-
-    canvas.save();
-    canvas.translate(midPoint.dx, midPoint.dy);
-
-    final textSpan = TextSpan(
-      text: text,
-      style: TextStyle(
-        color: Colors.black87,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        backgroundColor: Colors.white.withOpacity(0.9),
+  void _validateCropValues() {
+    final checks = [
+      (spec.topLeftX + spec.topRightX > spec.baseWidth, 'Üst kenar crop aşımı'),
+      (
+        spec.bottomLeftX + spec.bottomRightX > spec.baseWidth,
+        'Alt kenar crop aşımı',
       ),
-    );
-
-    final textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    textPainter.paint(
-      canvas,
-      Offset(-textPainter.width / 2, -textPainter.height / 2),
-    );
-    canvas.restore();
+      (
+        spec.topLeftY + spec.bottomLeftY > spec.baseHeight,
+        'Sol kenar crop aşımı',
+      ),
+      (
+        spec.topRightY + spec.bottomRightY > spec.baseHeight,
+        'Sağ kenar crop aşımı',
+      ),
+    ];
+    for (final (hasError, msg) in checks) {
+      if (hasError) debugPrint('❌ Crop Hatası: $msg');
+    }
   }
+
+  // ── REPAINT ──
 
   @override
   bool shouldRepaint(covariant ShapePainter oldDelegate) {
     return oldDelegate.spec != spec ||
         oldDelegate.overrideStrokeColor != overrideStrokeColor ||
-        oldDelegate.overrideStrokeWidth != overrideStrokeWidth;
+        oldDelegate.overrideStrokeWidth != overrideStrokeWidth ||
+        oldDelegate.selectedElementId != selectedElementId ||
+        oldDelegate.showInternalElements != showInternalElements ||
+        oldDelegate.previewHorizontalLineY != previewHorizontalLineY ||
+        oldDelegate.previewVerticalLineX != previewVerticalLineX ||
+        oldDelegate.previewShortHorizontalLineY !=
+            previewShortHorizontalLineY ||
+        oldDelegate.previewShortVerticalLineX != previewShortVerticalLineX ||
+        oldDelegate.sideAttachments != sideAttachments ||
+        oldDelegate.sidePreviewSide != sidePreviewSide ||
+        oldDelegate.sidePreviewLocalY != sidePreviewLocalY ||
+        oldDelegate.sidePreviewLocalX != sidePreviewLocalX;
   }
 }

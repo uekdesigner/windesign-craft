@@ -1,8 +1,8 @@
-import 'package:opnwndw/models/project.dart' show Project;
+import '../../models/project.dart' show Project;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../presentation/providers/project_provider.dart';
+import 'project_provider.dart';
 import '../../models/project.dart';
 import '../../shared/widgets/phone_input_field.dart';
 

@@ -1,11 +1,12 @@
-import 'package:opnwndw/models/project.dart' show Project;
+import '../../models/project.dart' show Project;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/phone_input_field.dart';
 import 'package:flutter/services.dart';
 import 'project_detail_page.dart';
 import 'projects_list_page.dart';
-import '../../presentation/providers/project_provider.dart';
+import 'project_provider.dart';
+import '../../services/license_service.dart';
 
 class ProjectFormPage extends ConsumerStatefulWidget {
   const ProjectFormPage({super.key});
@@ -130,6 +131,28 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
           );
         }
       } catch (e) {
+        if (!mounted) return;
+
+        // Lisans sınırı → özel, anlaşılır mesaj
+        if (e is LicenseDeniedException) {
+          final mesaj = e.reason == 'project_limit'
+              ? 'Ücretsiz sürümde en fazla 2 proje oluşturabilirsiniz. Sınırsız proje için lisans alın.'
+              : e.reason == 'trial_expired'
+              ? 'Deneme süreniz doldu. Devam etmek için lisans alın.'
+              : 'Bu işlem için lisans gerekiyor.';
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(mesaj),
+              backgroundColor: Colors.orange.shade800,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
+        // Diğer hatalar → eski davranış
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );

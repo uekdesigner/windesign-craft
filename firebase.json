@@ -1,0 +1,34 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "windesign-craft-pro",
+          "appId": "1:744072834944:android:10d7d3aff0c68e57b19b65",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "windesign-craft-pro",
+          "configurations": {
+            "android": "1:744072834944:android:10d7d3aff0c68e57b19b65"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions"
+    }
+  ],
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

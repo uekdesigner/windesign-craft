@@ -1,12 +1,26 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+// 🆕 ORTAK KULLANIM İÇİN - Tüm uygulama tek enum kullanacak
+enum GapType {
+  top,
+  between,
+  bottom, // Yatay (Y) paneller için: Y0, Y1, Y2...
+  left,
+  betweenVertical,
+  right, // Dikey (X) paneller için: X0, X1, X2...
+}
+
+enum TriangleDirection { up, down, left, right }
 
 enum InternalElementType {
   verticalLine,
   horizontalLine,
   triangle,
   parallelLines,
+  slideArrow,
+  dotGrid,
+  lineGrid,
 }
 
 class InternalElement {
@@ -93,6 +107,17 @@ class ShapeSpec {
   Color strokeColor;
   double strokeWidth;
 
+  final String? systemName;
+  final String? seriesName;
+  final String? profileColor;
+  final String? glassSystem;
+  final String? glassTone;
+  final String? location;
+  final String? description;
+  final double? price;
+  final List<String> accessories;
+  final List<SideAttachment> sideAttachments;
+
   ShapeSpec({
     required this.id,
     required this.name,
@@ -111,6 +136,17 @@ class ShapeSpec {
     this.showDimensions = true,
     this.strokeColor = Colors.black,
     this.strokeWidth = 2.0,
+    // 🆕 EKLENDİ
+    this.systemName,
+    this.seriesName,
+    this.profileColor,
+    this.glassSystem,
+    this.glassTone,
+    this.location,
+    this.description,
+    this.price,
+    this.accessories = const [],
+    this.sideAttachments = const [],
   });
 
   factory ShapeSpec.rectangle({double width = 1000, double height = 1000}) {
@@ -183,6 +219,16 @@ class ShapeSpec {
     'internalElements': internalElements.map((e) => e.toJson()).toList(),
     'canvasPosition': {'x': canvasPosition.dx, 'y': canvasPosition.dy},
     'showDimensions': showDimensions,
+    'systemName': systemName,
+    'seriesName': seriesName,
+    'profileColor': profileColor,
+    'glassSystem': glassSystem,
+    'glassTone': glassTone,
+    'location': location,
+    'description': description,
+    'price': price,
+    'accessories': accessories,
+    'sideAttachments': sideAttachments.map((a) => a.toJson()).toList(),
   };
 
   factory ShapeSpec.fromJson(Map<String, dynamic> json) {
@@ -209,6 +255,20 @@ class ShapeSpec {
         json['canvasPosition']?['y'] ?? 0,
       ),
       showDimensions: json['showDimensions'] as bool? ?? true,
+      systemName: json['systemName'] as String?,
+      seriesName: json['seriesName'] as String?,
+      profileColor: json['profileColor'] as String?,
+      glassSystem: json['glassSystem'] as String?,
+      glassTone: json['glassTone'] as String?,
+      location: json['location'] as String?,
+      description: json['description'] as String?,
+      price: (json['price'] as num?)?.toDouble(),
+      accessories: ((json['accessories'] as List<dynamic>?) ?? [])
+          .whereType<String>()
+          .toList(),
+      sideAttachments: (json['sideAttachments'] as List<dynamic>? ?? [])
+          .map((e) => SideAttachment.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -226,6 +286,16 @@ class ShapeSpec {
     double? bottomRightY,
     List<InternalElement>? internalElements,
     bool? showDimensions,
+    String? systemName,
+    String? seriesName,
+    String? profileColor,
+    String? glassSystem,
+    String? glassTone,
+    String? location,
+    String? description,
+    double? price,
+    List<String>? accessories,
+    List<SideAttachment>? sideAttachments,
   }) {
     return ShapeSpec(
       id: id,
@@ -245,6 +315,74 @@ class ShapeSpec {
       showDimensions: showDimensions ?? this.showDimensions,
       strokeColor: strokeColor,
       strokeWidth: strokeWidth,
+      systemName: systemName ?? this.systemName,
+      seriesName: seriesName ?? this.seriesName,
+      profileColor: profileColor ?? this.profileColor,
+      glassSystem: glassSystem ?? this.glassSystem,
+      glassTone: glassTone ?? this.glassTone,
+      location: location ?? this.location,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      accessories: accessories ?? this.accessories,
+      sideAttachments: sideAttachments ?? this.sideAttachments,
+    );
+  }
+}
+
+class SideAttachment {
+  final String side;
+  final double width;
+  final double height;
+  final List<InternalElement> internalElements; // 🆕
+
+  const SideAttachment({
+    required this.side,
+    required this.width,
+    required this.height,
+    this.internalElements = const [], // 🆕
+  });
+
+  // 🆕 Yan panelin kendi offset'leri (iç çizgilerine göre)
+  double get outerOffsetVertical =>
+      internalElements.any((e) => e.type == InternalElementType.horizontalLine)
+      ? 40.0
+      : 15.0;
+
+  double get outerOffsetHorizontal =>
+      internalElements.any((e) => e.type == InternalElementType.verticalLine)
+      ? 40.0
+      : 15.0;
+
+  // 🆕 JSON
+  Map<String, dynamic> toJson() => {
+    'side': side,
+    'width': width,
+    'height': height,
+    'internal_elements': internalElements.map((e) => e.toJson()).toList(),
+  };
+
+  factory SideAttachment.fromJson(Map<String, dynamic> json) {
+    return SideAttachment(
+      side: json['side'] as String,
+      width: (json['width'] as num).toDouble(),
+      height: (json['height'] as num).toDouble(),
+      internalElements: (json['internal_elements'] as List<dynamic>? ?? [])
+          .map((e) => InternalElement.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  SideAttachment copyWith({
+    String? side,
+    double? width,
+    double? height,
+    List<InternalElement>? internalElements,
+  }) {
+    return SideAttachment(
+      side: side ?? this.side,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      internalElements: internalElements ?? this.internalElements,
     );
   }
 }

@@ -1,4 +1,3 @@
-// presentation/dialogs/room_dialog.dart
 import 'package:flutter/material.dart';
 import '../../models/drawing.dart';
 
@@ -119,7 +118,11 @@ class _RoomDialogState extends State<RoomDialog> {
                     children: [
                       IconButton(
                         onPressed: _onSave,
-                        icon: Icon(Icons.save, color: Colors.green, size: 24),
+                        icon: Icon(
+                          Icons.save,
+                          color: const Color.fromARGB(255, 18, 18, 18),
+                          size: 24,
+                        ),
                         splashRadius: 20,
                         padding: EdgeInsets.zero,
                         constraints: BoxConstraints(

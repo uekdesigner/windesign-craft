@@ -1,4 +1,3 @@
-// lib/data/datasources/local_database.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -16,23 +15,57 @@ class LocalDatabase {
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'windesign_craft.db');
+    final path = join(dbPath, 'windesign_craftv2.db');
+
+    // NOT: Canlıdaki kullanıcıların verilerinin silinmemesi için
+    // deleteDatabase(path) veya windesign_craftv1.db silme işlemlerini buradan kaldırdık.
+    // Eğer v1'den v2'ye veri taşınacaksa bu onUpgrade veya özel bir migration servisiyle yapılmalıdır.
 
     return await openDatabase(
       path,
-      version: 10,
+      version:
+          2, // 💡 YENİ: Versiyon 2'ye yükseltildi (yeni tablolar/kolonlar için)
       onCreate: _createTables,
-      onUpgrade: _updateDatabase,
+      onUpgrade: _handleUpgrade, // 💡 TÜM GÜNCELLEMELER BURADA YÖNETİLECEK
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
   }
 
+  // Yalnızca veritabanı İLK DEFA oluşurken çalışır
   Future<void> _createTables(Database db, int version) async {
-    await db.execute('PRAGMA foreign_keys = ON');
+    await db.execute('''
+      CREATE TABLE window_systems (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        unit_price REAL DEFAULT 0
+      )
+    ''');
 
-    // Projeler tablosu
+    await db.execute('''
+      CREATE TABLE window_series (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        system_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        unit_price REAL DEFAULT 0,
+        FOREIGN KEY (system_id) REFERENCES window_systems(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE window_colors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        series_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        unit_price REAL DEFAULT 0,
+        FOREIGN KEY (series_id) REFERENCES window_series(id)
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE projects (
         id TEXT PRIMARY KEY,
@@ -40,11 +73,11 @@ class LocalDatabase {
         phone TEXT NOT NULL,
         address TEXT NOT NULL,
         description TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        discount REAL DEFAULT 0
       )
     ''');
 
-    // Çizimler tablosu
     await db.execute('''
       CREATE TABLE drawings (
         id TEXT PRIMARY KEY,
@@ -58,109 +91,140 @@ class LocalDatabase {
         height REAL,
         width REAL,
         room_description TEXT,
+        system_name TEXT,
+        series_name TEXT,
+        profile_color TEXT,
+        glass_system TEXT,
+        glass_tone TEXT,
+        description TEXT,
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE glass_systems (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        unit_price REAL DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE glass_tones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        unit_price REAL DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE accessories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        unit_price REAL DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        paid_at TEXT NOT NULL,
+        note TEXT,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       )
     ''');
   }
 
-  Future<void> _updateDatabase(
+  // Eski sürüm kullanan kullanıcılar uygulamayı güncellediğinde burası tetiklenir
+  Future<void> _handleUpgrade(
     Database db,
     int oldVersion,
     int newVersion,
   ) async {
-    await db.execute('PRAGMA foreign_keys = ON');
+    if (oldVersion < 2) {
+      // Örnek: Eğer kullanıcıda eski şema varsa dinamik olarak eksik kolonları tamamla
+      await _ensureDrawingColumns(db);
+      await _ensureUnitPriceColumns(db);
+      await _ensureProjectColumns(db);
 
-    if (oldVersion < 10) {
-      // Yeni ShapeSpec modeli için eski verileri temizle
-      await db.execute('DROP TABLE IF EXISTS drawings');
-      await db.execute('DROP TABLE IF EXISTS projects');
-      await _createTables(db, 10);
+      // Payments tablosu eski versiyonda yoksa oluştur
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id TEXT NOT NULL,
+          amount REAL NOT NULL,
+          paid_at TEXT NOT NULL,
+          note TEXT,
+          FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )
+      ''');
     }
+  }
 
-    // 🚨 YENİ: Version 7 için optimizasyonlar
-    if (oldVersion < 7) {
-      try {
-        // Yeni index'ler
-        await db.execute('''
-          CREATE INDEX IF NOT EXISTS idx_drawings_project_updated 
-          ON drawings (project_id, updated_at DESC)
-        ''');
+  // Güvenlik amaçlı dinamik kontroller (onUpgrade içinden çağrılır)
+  Future<void> _ensureProjectColumns(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(projects)');
+    final columnNames = columns.map((c) => c['name'] as String).toSet();
+    if (!columnNames.contains('discount')) {
+      await db.execute(
+        'ALTER TABLE projects ADD COLUMN discount REAL DEFAULT 0',
+      );
+    }
+  }
 
-        // Mevcut verileri optimize et
-        await db.execute('VACUUM');
-      } catch (e) {
-        print('⚠️ Database update error: $e');
-      }
-    }
-    if (oldVersion < 9) {
-      await db.execute('DROP TABLE IF EXISTS drawings');
-      await db.execute('DROP TABLE IF EXISTS projects');
-      await _createTables(db, 9);
-    }
-    if (oldVersion < 6) {
-      try {
-        await db.execute('''
-          CREATE INDEX IF NOT EXISTS idx_drawings_project_id 
-          ON drawings (project_id)
-        ''');
-        await db.execute('''
-          CREATE INDEX IF NOT EXISTS idx_drawings_created_at 
-          ON drawings (created_at DESC)
-        ''');
-        await db.execute('''
-          CREATE INDEX IF NOT EXISTS idx_projects_created_at 
-          ON projects (created_at DESC)
-        ''');
-      } catch (e) {
-        print('⚠️ Index creation error: $e');
-      }
-    }
-
-    if (oldVersion < 3) {
-      await db.execute('DROP TABLE IF EXISTS drawings');
-      await db.execute('DROP TABLE IF EXISTS projects');
-      await _createTables(db, 3);
-    }
-
-    if (oldVersion < 4) {
-      try {
-        await db.execute('''
-          CREATE TABLE drawings_backup_v4 AS 
-          SELECT * FROM drawings
-        ''');
-        await db.execute('''
-          CREATE TABLE drawings_new (
-            id TEXT PRIMARY KEY,
-            project_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT,
-            drawing_data TEXT,
-            location TEXT,
-            direction TEXT,
-            height REAL,
-            width REAL,
-            room_description TEXT,
-            FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
-          )
-        ''');
-        await db.execute('''
-          INSERT INTO drawings_new 
-          SELECT * FROM drawings
-        ''');
-        await db.execute('DROP TABLE drawings');
-        await db.execute('ALTER TABLE drawings_new RENAME TO drawings');
-        await db.execute('DROP TABLE drawings_backup_v4');
-      } catch (e) {
-        print('⚠️ Version 4 migration error: $e');
+  Future<void> _ensureUnitPriceColumns(Database db) async {
+    final tables = [
+      'window_systems',
+      'window_series',
+      'window_colors',
+      'glass_systems',
+      'glass_tones',
+    ];
+    for (final table in tables) {
+      final columns = await db.rawQuery('PRAGMA table_info($table)');
+      final columnNames = columns.map((c) => c['name'] as String).toSet();
+      if (!columnNames.contains('unit_price')) {
+        await db.execute(
+          'ALTER TABLE $table ADD COLUMN unit_price REAL DEFAULT 0',
+        );
       }
     }
   }
 
-  // PROJE İŞLEMLERİ
+  Future<void> _ensureDrawingColumns(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(drawings)');
+    final columnNames = columns.map((c) => c['name'] as String).toSet();
+
+    final newColumns = {
+      'system_name': 'TEXT',
+      'series_name': 'TEXT',
+      'profile_color': 'TEXT',
+      'glass_system': 'TEXT',
+      'glass_tone': 'TEXT',
+      'description': 'TEXT',
+    };
+
+    for (final entry in newColumns.entries) {
+      if (!columnNames.contains(entry.key)) {
+        await db.execute(
+          'ALTER TABLE drawings ADD COLUMN ${entry.key} ${entry.value}',
+        );
+      }
+    }
+  }
+
+  // ==================== PROJE İŞLEMLERİ ====================
+
   Future<int> insertProject(Map<String, dynamic> project) async {
     final db = await database;
-    return await db.insert('projects', project);
+    // 💡 İYİLEŞTİRME: Aynı ID gelirse hata fırlatmak yerine üzerine yazar/günceller.
+    return await db.insert(
+      'projects',
+      project,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getProjects() async {
@@ -170,18 +234,13 @@ class LocalDatabase {
 
   Future<int> deleteProject(String id) async {
     final db = await database;
-
-    // Önce foreign key check
     try {
       final result = await db.delete(
         'projects',
         where: 'id = ?',
         whereArgs: [id],
       );
-
-      if (result == 0) {
-        throw Exception('Proje bulunamadı: $id');
-      }
+      if (result == 0) throw Exception('Proje bulunamadı: $id');
       return result;
     } catch (e) {
       print('❌ Delete project error: $e');
@@ -220,30 +279,21 @@ class LocalDatabase {
     return maps.isNotEmpty;
   }
 
-  // ÇİZİM İŞLEMLERİ
+  // ==================== ÇİZİM İŞLEMLERİ ====================
+
   Future<int> insertDrawing(Map<String, dynamic> drawing) async {
     final db = await database;
-
-    // Projenin var olduğundan emin ol
-    final project = await getProjectById(drawing['project_id']);
-    if (project == null) {
-      throw Exception('Proje bulunamadı: ${drawing['project_id']}');
-    }
-
-    return await db.insert('drawings', drawing);
+    return await db.insert(
+      'drawings',
+      drawing,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getDrawingsByProject(
     String projectId,
   ) async {
     final db = await database;
-
-    // Projenin var olduğundan emin ol
-    final project = await getProjectById(projectId);
-    if (project == null) {
-      throw Exception('Proje bulunamadı: $projectId');
-    }
-
     return await db.query(
       'drawings',
       where: 'project_id = ?',
@@ -278,35 +328,28 @@ class LocalDatabase {
     return maps.isNotEmpty ? maps.first : null;
   }
 
-  // 🚨 YENİ: Toplu işlem için transaction
   Future<int> insertDrawingWithTransaction(Map<String, dynamic> drawing) async {
     final db = await database;
-
     return await db.transaction((txn) async {
-      // Proje kontrolü
       final project = await txn.query(
         'projects',
         where: 'id = ?',
         whereArgs: [drawing['project_id']],
         limit: 1,
       );
-
-      if (project.isEmpty) {
+      if (project.isEmpty)
         throw Exception('Proje bulunamadı: ${drawing['project_id']}');
-      }
 
-      // Çizimi ekle
-      final result = await txn.insert('drawings', drawing);
-
-      if (result == 0) {
-        throw Exception('Çizim eklenemedi');
-      }
-
+      final result = await txn.insert(
+        'drawings',
+        drawing,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      if (result == 0) throw Exception('Çizim eklenemedi');
       return result;
     });
   }
 
-  // 🚨 YENİ: Çizim sayısını getir
   Future<int> getDrawingCount(String projectId) async {
     final db = await database;
     final result = await db.rawQuery(
@@ -316,7 +359,6 @@ class LocalDatabase {
     return (result.first['count'] as int?) ?? 0;
   }
 
-  // 🚨 YENİ: Son güncellenen çizimleri getir
   Future<List<Map<String, dynamic>>> getRecentDrawings({int limit = 10}) async {
     final db = await database;
     return await db.query(
@@ -327,16 +369,42 @@ class LocalDatabase {
     );
   }
 
-  // 🚨 YENİ: Veritabanı durumunu kontrol et
+  // ==================== ÖDEME İŞLEMLERİ ====================
+
+  Future<int> insertPayment(Map<String, dynamic> payment) async {
+    final db = await database;
+    return await db.insert(
+      'payments',
+      payment,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPaymentsByProject(
+    String projectId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'payments',
+      where: 'project_id = ?',
+      whereArgs: [projectId],
+      orderBy: 'paid_at DESC',
+    );
+  }
+
+  Future<int> deletePayment(int id) async {
+    final db = await database;
+    return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<Map<String, dynamic>> getDatabaseStatus() async {
     final db = await database;
     final projectsCount = await db.rawQuery('SELECT COUNT(*) FROM projects');
     final drawingsCount = await db.rawQuery('SELECT COUNT(*) FROM drawings');
-
     return {
       'projects': (projectsCount.first['COUNT(*)'] as int?) ?? 0,
       'drawings': (drawingsCount.first['COUNT(*)'] as int?) ?? 0,
-      'version': 7,
+      'version': 2,
     };
   }
 }

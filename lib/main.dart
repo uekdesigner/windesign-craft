@@ -1,22 +1,26 @@
-// lib/main.dart
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'dart:async';
-
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
-import 'app_theme.dart';
-import 'features/home/home_page.dart';
 import 'services/error_handler.dart';
+import 'app.dart';
 
 void main() {
   runZonedGuarded(
-    () {
+    () async {
       WidgetsFlutterBinding.ensureInitialized();
-
-      // 🚨 GLOBAL ERROR HANDLING
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      await GoogleSignIn.instance.initialize(
+        serverClientId:
+            '744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com',
+      );
       _setupGlobalErrorHandling();
-
-      runApp(const ProviderScope(child: MyApp()));
+      runApp(const ProviderScope(child: WinDesignApp()));
     },
     (error, stackTrace) {
       ErrorHandlerService().handleError(
@@ -30,7 +34,6 @@ void main() {
 }
 
 void _setupGlobalErrorHandling() {
-  // Flutter framework hataları
   FlutterError.onError = (details) {
     ErrorHandlerService().handleError(
       error: details.exception,
@@ -40,7 +43,6 @@ void _setupGlobalErrorHandling() {
     );
   };
 
-  // Platform hataları
   PlatformDispatcher.instance.onError = (error, stackTrace) {
     ErrorHandlerService().handleError(
       error: error,
@@ -50,20 +52,4 @@ void _setupGlobalErrorHandling() {
     );
     return true;
   };
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'WinDesign_Craft Pro',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.light,
-      home: const HomePage(),
-    );
-  }
 }

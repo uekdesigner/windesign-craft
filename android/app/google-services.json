@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "744072834944",
+    "project_id": "windesign-craft-pro",
+    "storage_bucket": "windesign-craft-pro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744072834944:android:ac0ae4631e82dbd3b19b65",
+        "android_client_info": {
+          "package_name": "com.uekdesigner.windesigncraft"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744072834944-0q5sa154vupsr1f02cg3qnoo6baqnb86.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.uekdesigner.windesigncraft",
+            "certificate_hash": "172496268650fa96580430354602a5c4aba7332c"
+          }
+        },
+        {
+          "client_id": "744072834944-3u92naj04166n7ued61vefoplv9v4u2a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.uekdesigner.windesigncraft",
+            "certificate_hash": "3f16b67628ab2bc2b3f2d79d01d24e8c482f6835"
+          }
+        },
+        {
+          "client_id": "744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA73w5mZkDU2goAf7pbdqzZtO5S4JXEZfM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,703 @@
+// lib/features/settings/settings_page.dart
+
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import '../../providers/license_provider.dart';
+import '../../screens/redeem_key_screen.dart';
+
+class SettingsPage extends ConsumerStatefulWidget {
+  const SettingsPage({super.key});
+
+  @override
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  // ── Sabit yazılım bilgileri ───────────────────────────────────────────────
+  static const String _yazilimAdi = 'WinDesign Craft Pro';
+  static const String _ureticiFirma = 'UEK DESIGNER';
+  static const String _ureticiFirmaMail = 'info@uekdesigner.com';
+  static const String _ureticiFirmaTel = '+90 543 872 39 26';
+  static const int _copyrightYil = 2026;
+  static const String _versiyon = 'v1.0.0';
+
+  // ── SharedPreferences anahtarları ────────────────────────────────────────
+  static const String _keyFirmaAdi = 'firma_adi';
+  static const String _keyFirmaAdres = 'firma_adres';
+  static const String _keyLogoPath = 'logo_path';
+
+  // ── Controller'lar ────────────────────────────────────────────────────────
+  final TextEditingController _firmaAdiCtrl = TextEditingController();
+  final TextEditingController _firmaAdresCtrl = TextEditingController();
+
+  String? _logoPath;
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _firmaAdiCtrl.dispose();
+    _firmaAdresCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Yükle ────────────────────────────────────────────────────────────────
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _firmaAdiCtrl.text = prefs.getString(_keyFirmaAdi) ?? '';
+      _firmaAdresCtrl.text = prefs.getString(_keyFirmaAdres) ?? '';
+      _logoPath = prefs.getString(_keyLogoPath);
+      _isLoading = false;
+    });
+  }
+
+  // ── Kaydet ───────────────────────────────────────────────────────────────
+
+  Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFirmaAdi, _firmaAdiCtrl.text.trim());
+    await prefs.setString(_keyFirmaAdres, _firmaAdresCtrl.text.trim());
+    if (_logoPath != null) {
+      await prefs.setString(_keyLogoPath, _logoPath!);
+    }
+
+    setState(() => _isSaving = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ayarlar kaydedildi'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  // ── Logo seç ─────────────────────────────────────────────────────────────
+
+  Future<void> _pickLogo() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+
+    if (picked == null) return;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final logoDir = Directory('${appDir.path}/logos');
+    if (!await logoDir.exists()) await logoDir.create(recursive: true);
+
+    final ext = path.extension(picked.path);
+    final dest = '${logoDir.path}/firma_logo$ext';
+    await File(picked.path).copy(dest);
+
+    setState(() => _logoPath = dest);
+  }
+
+  // ── Logo sil ─────────────────────────────────────────────────────────────
+
+  Future<void> _removeLogo() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyLogoPath);
+    setState(() => _logoPath = null);
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Ayarlar'),
+        backgroundColor: const Color.fromARGB(255, 110, 178, 247),
+        foregroundColor: Colors.white,
+        actions: [
+          TextButton.icon(
+            onPressed: _isSaving ? null : _saveSettings,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save, color: Colors.white, size: 20),
+            label: Text(
+              _isSaving ? 'Kaydediliyor...' : 'Kaydet',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHesapBilgileriSection(),
+                  const SizedBox(height: 20),
+                  _buildFirmaBilgileriSection(),
+                  const SizedBox(height: 20),
+                  _buildLogoSection(),
+                  const SizedBox(height: 20),
+                  _buildLisansBilgileriSection(),
+                  const SizedBox(height: 20),
+                  _buildHakkindaSection(),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+    );
+  }
+
+  // ── Hesap Bilgileri (telefon + e-posta — kilitli) ────────────────────────
+
+  Widget _buildHesapBilgileriSection() {
+    final user = FirebaseAuth.instance.currentUser;
+    final phone = user?.phoneNumber ?? 'Doğrulanmamış';
+    final email = user?.email ?? 'Bilinmiyor';
+
+    return _buildCard(
+      title: 'HESAP BİLGİLERİ',
+      icon: Icons.person_outline,
+      iconColor: Colors.indigo.shade600,
+      child: Column(
+        children: [
+          _buildLockedField(
+            icon: Icons.email_outlined,
+            label: 'E-posta',
+            value: email,
+          ),
+          const SizedBox(height: 12),
+          _buildLockedField(
+            icon: Icons.phone_outlined,
+            label: 'Telefon',
+            value: phone,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Firma Bilgileri (düzenlenebilir) ─────────────────────────────────────
+
+  Widget _buildFirmaBilgileriSection() {
+    return _buildCard(
+      title: 'FİRMA BİLGİLERİ',
+      icon: Icons.business,
+      iconColor: const Color.fromARGB(255, 110, 178, 247),
+      child: Column(
+        children: [
+          _buildTextField(
+            controller: _firmaAdiCtrl,
+            label: 'Firma Adı',
+            hint: 'Örn: ABC Doğrama',
+            icon: Icons.business_outlined,
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _firmaAdresCtrl,
+            label: 'Adres',
+            hint: 'Örn: İstanbul, Kadıköy',
+            icon: Icons.location_on_outlined,
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Logo ──────────────────────────────────────────────────────────────────
+
+  Widget _buildLogoSection() {
+    return _buildCard(
+      title: 'FİRMA LOGOSU',
+      icon: Icons.image_outlined,
+      iconColor: Colors.orange.shade600,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'PDF\'lerde firma antetinde görünür. Logo seçilmezse sadece firma adı yazılır.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey.shade50,
+                ),
+                child: _logoPath != null && File(_logoPath!).existsSync()
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(_logoPath!),
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : Icon(
+                        Icons.image_outlined,
+                        size: 36,
+                        color: Colors.grey.shade400,
+                      ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _pickLogo,
+                      icon: const Icon(Icons.upload, size: 18),
+                      label: Text(
+                        _logoPath != null ? 'Logoyu Değiştir' : 'Logo Seç',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          110,
+                          178,
+                          247,
+                        ),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    if (_logoPath != null) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _removeLogo,
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.red.shade400,
+                        ),
+                        label: Text(
+                          'Logoyu Kaldır',
+                          style: TextStyle(color: Colors.red.shade400),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.red.shade200),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Lisans Bilgileri ──────────────────────────────────────────────────────
+
+  Widget _buildLisansBilgileriSection() {
+    final licenseAsync = ref.watch(licenseProvider);
+
+    return _buildCard(
+      title: 'LİSANS BİLGİLERİ',
+      icon: Icons.verified_user_outlined,
+      iconColor: Colors.green.shade700,
+      child: licenseAsync.when(
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        error: (_, __) => const Text(
+          'Lisans bilgisi yüklenemedi.',
+          style: TextStyle(color: Colors.red),
+        ),
+        data: (lic) {
+          final String planText;
+          final Color planColor;
+          final IconData planIcon;
+
+          if (lic.isLicensed) {
+            planText = lic.tier == 'yearly' ? 'Yıllık Lisans' : 'Aylık Lisans';
+            planColor = Colors.green.shade700;
+            planIcon = Icons.check_circle;
+          } else if (lic.isLocked) {
+            planText = 'Süresi Dolmuş';
+            planColor = Colors.red.shade700;
+            planIcon = Icons.cancel;
+          } else {
+            planText = 'Deneme Sürümü';
+            planColor = Colors.orange.shade700;
+            planIcon = Icons.hourglass_bottom;
+          }
+
+          final daysLeft = lic.trialDaysLeft;
+          final String? countdownText;
+
+          if (lic.isLicensed && lic.licenseExpiresAt != null) {
+            // Lisanslı — bitiş tarihi göster
+            final d = lic.licenseExpiresAt!;
+            countdownText =
+                '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+          } else if (lic.isTrial && daysLeft != null) {
+            countdownText = daysLeft > 0 ? '$daysLeft gün kaldı' : 'Süre doldu';
+          } else {
+            countdownText = null;
+          }
+
+          return Column(
+            children: [
+              // Plan durumu
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: planColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: planColor.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(planIcon, color: planColor, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            planText,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: planColor,
+                            ),
+                          ),
+                          if (countdownText != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              lic.isLicensed
+                                  ? 'Son kullanım: $countdownText'
+                                  : countdownText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: planColor.withOpacity(0.8),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Detaylar
+              const SizedBox(height: 12),
+              _buildHakkindaRow(
+                Icons.category_outlined,
+                'Plan',
+                lic.tier == 'yearly'
+                    ? 'Yıllık'
+                    : lic.tier == 'monthly'
+                    ? 'Aylık'
+                    : 'Deneme',
+              ),
+              const Divider(height: 16),
+              _buildHakkindaRow(
+                Icons.assignment_outlined,
+                'Durum',
+                lic.isLicensed
+                    ? 'Aktif'
+                    : lic.isLocked
+                    ? 'Kilitli'
+                    : 'Deneme',
+              ),
+              if (!lic.isLicensed) ...[
+                const Divider(height: 16),
+                _buildHakkindaRow(
+                  Icons.folder_outlined,
+                  'Proje',
+                  '${lic.projectCount} / 2 kullanıldı',
+                ),
+                const Divider(height: 16),
+                _buildHakkindaRow(
+                  Icons.picture_as_pdf_outlined,
+                  'PDF',
+                  '${lic.pdfProjects.length} proje için üretildi',
+                ),
+              ],
+
+              // Lisans anahtarı gir butonu (lisanssızsa)
+              if (!lic.isLicensed) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => const RedeemKeyScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        ref.invalidate(licenseProvider);
+                      }
+                    },
+                    icon: const Icon(Icons.vpn_key, size: 18),
+                    label: const Text('Lisans Anahtarı Gir'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Hakkında ──────────────────────────────────────────────────────────────
+
+  Widget _buildHakkindaSection() {
+    return _buildCard(
+      title: 'HAKKINDA',
+      icon: Icons.info_outline,
+      iconColor: Colors.teal.shade600,
+      child: Column(
+        children: [
+          _buildHakkindaRow(Icons.computer, 'Yazılım', _yazilimAdi),
+          const Divider(height: 16),
+          _buildHakkindaRow(
+            Icons.business,
+            'Geliştirici',
+            '$_ureticiFirma © $_copyrightYil',
+          ),
+          const Divider(height: 16),
+          _buildHakkindaRow(Icons.email_outlined, 'E-posta', _ureticiFirmaMail),
+          const Divider(height: 16),
+          _buildHakkindaRow(Icons.phone_outlined, 'Telefon', _ureticiFirmaTel),
+          const Divider(height: 16),
+          _buildHakkindaRow(Icons.tag, 'Versiyon', _versiyon),
+        ],
+      ),
+    );
+  }
+
+  // ── Kilitli alan (düzenlenemez) ──────────────────────────────────────────
+
+  Widget _buildLockedField({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey.shade500),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade400),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHakkindaRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey.shade500),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1F1F1F),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Yardımcı widget'lar ──────────────────────────────────────────────────
+
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required Widget child,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: iconColor),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, size: 20),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        isDense: true,
+      ),
+      style: const TextStyle(fontSize: 14),
+    );
+  }
+}
+
+// ── Ayarları okumak için yardımcı sınıf ──────────────────────────────────────
+
+class SettingsService {
+  static const String _keyFirmaAdi = 'firma_adi';
+  static const String _keyFirmaTel = 'firma_tel';
+  static const String _keyFirmaAdres = 'firma_adres';
+  static const String _keyLogoPath = 'logo_path';
+
+  static Future<FirmaSettings> loadFirmaSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    return FirmaSettings(
+      firmaAdi: prefs.getString(_keyFirmaAdi) ?? '',
+      telefon: prefs.getString(_keyFirmaTel) ?? '',
+      adres: prefs.getString(_keyFirmaAdres) ?? '',
+      logoPath: prefs.getString(_keyLogoPath),
+    );
+  }
+}
+
+class FirmaSettings {
+  final String firmaAdi;
+  final String telefon;
+  final String adres;
+  final String? logoPath;
+
+  const FirmaSettings({
+    required this.firmaAdi,
+    required this.telefon,
+    required this.adres,
+    this.logoPath,
+  });
+}

@@ -139,7 +139,7 @@ class _CornerEditDialogState extends State<CornerEditDialog> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      suffixText: 'mm',
+                      suffixText: '',
                     ),
                     autofocus: true,
                   ),
@@ -180,7 +180,7 @@ class _CornerEditDialogState extends State<CornerEditDialog> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      suffixText: 'mm',
+                      suffixText: '',
                     ),
                   ),
                 ),

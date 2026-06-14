@@ -1,10 +1,10 @@
-// lib/presentation/pages/projects_list_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../presentation/providers/project_provider.dart';
+import 'project_provider.dart';
 import '../../models/project.dart';
 import 'project_detail_page.dart';
+import '../../providers/license_provider.dart';
+import '../../models/license_model.dart';
 
 class ProjectsListPage extends ConsumerStatefulWidget {
   const ProjectsListPage({super.key});
@@ -218,13 +218,79 @@ class _ProjectsListPageState extends ConsumerState<ProjectsListPage> {
           ),
         ),
         data: (projects) {
-          if (projects.isEmpty) {
-            return _buildEmptyState();
-          }
           final groupedProjects = _groupProjects(projects);
-          return _buildContent(groupedProjects);
+          return Column(
+            children: [
+              // 🔔 Deneme banner'ı
+              _buildTrialBanner(),
+              Expanded(child: _buildContent(groupedProjects)),
+            ],
+          );
         },
       ),
+    );
+  }
+
+  Widget _buildTrialBanner() {
+    final licenseAsync = ref.watch(licenseProvider);
+    return licenseAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (lic) {
+        // Lisanslıysa banner gösterme
+        if (lic.isLicensed) return const SizedBox.shrink();
+
+        final daysLeft = lic.trialDaysLeft ?? 0;
+        final Color bgColor;
+        final String text;
+
+        if (daysLeft > 5) {
+          bgColor = Colors.blue.shade600;
+          text = 'Deneme süresi: $daysLeft gün kaldı';
+        } else if (daysLeft > 0) {
+          bgColor = Colors.orange.shade700;
+          text = 'Deneme süresi: $daysLeft gün kaldı!';
+        } else {
+          bgColor = Colors.red.shade700;
+          text = 'Deneme süreniz doldu';
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          color: bgColor,
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Lisans satın alma yakında eklenecek.'),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Lisans Al',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -377,7 +443,7 @@ class _ProjectsListPageState extends ConsumerState<ProjectsListPage> {
     return Positioned(
       right: 8,
       top: 80,
-      bottom: 8,
+      bottom: 8 + MediaQuery.of(context).padding.bottom,
       child: Container(
         width: 50,
         decoration: BoxDecoration(

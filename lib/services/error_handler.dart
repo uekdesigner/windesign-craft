@@ -1,6 +1,5 @@
-// lib/core/services/error_handler_service.dart
 import 'dart:developer';
-import '../core/errors/app_exceptions.dart';
+import 'app_exceptions.dart';
 
 class ErrorHandlerService {
   static final ErrorHandlerService _instance = ErrorHandlerService._internal();

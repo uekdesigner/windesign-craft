@@ -1,4 +1,3 @@
-// lib/data/models/drawing_model.dart
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'shape_spec.dart';
