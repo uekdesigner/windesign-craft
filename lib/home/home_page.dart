@@ -346,7 +346,7 @@ class HomePage extends StatelessWidget {
           ),
           SizedBox(height: usableHeight * 0.008),
           Text(
-            '© 2025 TÜM HAKLARI SAKLIDIR.',
+            '© 2026 TÜM HAKLARI SAKLIDIR.',
             style: Theme.of(context).textTheme.bodySmall!.copyWith(
               fontSize: fontSize * 0.85,
               color: const Color.fromARGB(255, 90, 90, 90),
@@ -624,7 +624,7 @@ class HomePage extends StatelessWidget {
             ),
             SizedBox(height: usableHeight * 0.008),
             Text(
-              '© 2025 TÜM HAKLARI SAKLIDIR.',
+              '© 2026 TÜM HAKLARI SAKLIDIR.',
               style: Theme.of(context).textTheme.bodySmall!.copyWith(
                 fontSize: fontSize * 0.85,
                 color: Colors.grey[600],

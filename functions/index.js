@@ -18,8 +18,9 @@ const ADMIN_EMAILS = ["muratalper81@gmail.com"];
  * Uygulama ID'sini doğrula
  */
 function validateAppId(appId) {
+    console.log("validateAppId çağrıldı, appId:", appId, "type:", typeof appId);
     if (!appId || typeof appId !== "string" || !VALID_APPS.includes(appId)) {
-        throw new HttpsError("invalid-argument", "Geçersiz appId.");
+        throw new HttpsError("invalid-argument", "Geçersiz appId: " + appId);
     }
 }
 

@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../../providers/license_provider.dart';
 import '../../screens/redeem_key_screen.dart';
+import '../../services/backup_service.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -18,7 +19,8 @@ class SettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage>
+    with SingleTickerProviderStateMixin {
   // ── Sabit yazılım bilgileri ───────────────────────────────────────────────
   static const String _yazilimAdi = 'WinDesign Craft Pro';
   static const String _ureticiFirma = 'UEK DESIGNER';
@@ -27,12 +29,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   static const int _copyrightYil = 2026;
   static const String _versiyon = 'v1.0.0';
 
-  // ── SharedPreferences anahtarları ────────────────────────────────────────
   static const String _keyFirmaAdi = 'firma_adi';
   static const String _keyFirmaAdres = 'firma_adres';
   static const String _keyLogoPath = 'logo_path';
 
-  // ── Controller'lar ────────────────────────────────────────────────────────
   final TextEditingController _firmaAdiCtrl = TextEditingController();
   final TextEditingController _firmaAdresCtrl = TextEditingController();
 
@@ -40,9 +40,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
 
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadSettings();
   }
 
@@ -50,10 +53,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _firmaAdiCtrl.dispose();
     _firmaAdresCtrl.dispose();
+    _tabController.dispose();
     super.dispose();
   }
-
-  // ── Yükle ────────────────────────────────────────────────────────────────
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -65,20 +67,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
-  // ── Kaydet ───────────────────────────────────────────────────────────────
-
   Future<void> _saveSettings() async {
     setState(() => _isSaving = true);
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyFirmaAdi, _firmaAdiCtrl.text.trim());
     await prefs.setString(_keyFirmaAdres, _firmaAdresCtrl.text.trim());
     if (_logoPath != null) {
       await prefs.setString(_keyLogoPath, _logoPath!);
     }
-
     setState(() => _isSaving = false);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -90,8 +87,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  // ── Logo seç ─────────────────────────────────────────────────────────────
-
   Future<void> _pickLogo() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
@@ -99,21 +94,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       maxWidth: 512,
       maxHeight: 512,
     );
-
     if (picked == null) return;
-
     final appDir = await getApplicationDocumentsDirectory();
     final logoDir = Directory('${appDir.path}/logos');
     if (!await logoDir.exists()) await logoDir.create(recursive: true);
-
     final ext = path.extension(picked.path);
     final dest = '${logoDir.path}/firma_logo$ext';
     await File(picked.path).copy(dest);
-
     setState(() => _logoPath = dest);
   }
-
-  // ── Logo sil ─────────────────────────────────────────────────────────────
 
   Future<void> _removeLogo() async {
     final prefs = await SharedPreferences.getInstance();
@@ -121,7 +110,63 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     setState(() => _logoPath = null);
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  Future<void> _exportBackup() async {
+    try {
+      await BackupService().exportBackup();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Yedekleme hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _importBackup() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Geri Yükle'),
+        content: const Text(
+          'Mevcut veriler korunur, yedekteki veriler üzerine eklenir. Devam etmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Devam Et'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final (success, message) = await BackupService().importBackup();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Geri yükleme hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,56 +176,118 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         backgroundColor: const Color.fromARGB(255, 110, 178, 247),
         foregroundColor: Colors.white,
         actions: [
-          TextButton.icon(
-            onPressed: _isSaving ? null : _saveSettings,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save, color: Colors.white, size: 20),
-            label: Text(
-              _isSaving ? 'Kaydediliyor...' : 'Kaydet',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          // Kaydet butonu sadece Genel sekmesinde aktif
+          ListenableBuilder(
+            listenable: _tabController,
+            builder: (_, __) {
+              if (_tabController.index != 0) return const SizedBox.shrink();
+              return TextButton.icon(
+                onPressed: _isSaving ? null : _saveSettings,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save, color: Colors.white, size: 20),
+                label: Text(
+                  _isSaving ? 'Kaydediliyor...' : 'Kaydet',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'Genel'),
+            Tab(text: 'Lisans'),
+            Tab(text: 'Hakkında'),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildHesapBilgileriSection(),
-                  const SizedBox(height: 20),
-                  _buildFirmaBilgileriSection(),
-                  const SizedBox(height: 20),
-                  _buildLogoSection(),
-                  const SizedBox(height: 20),
-                  _buildLisansBilgileriSection(),
-                  const SizedBox(height: 20),
-                  _buildHakkindaSection(),
-                  const SizedBox(height: 32),
-                ],
-              ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildGenelTab(),
+                _buildLisansTab(),
+                _buildHakkindaTab(),
+              ],
             ),
     );
   }
 
-  // ── Hesap Bilgileri (telefon + e-posta — kilitli) ────────────────────────
+  // ── GENEL SEKMESİ ─────────────────────────────────────────────────────────
+
+  Widget _buildGenelTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildFirmaBilgileriSection(),
+          const SizedBox(height: 16),
+          _buildLogoSection(),
+          const SizedBox(height: 16),
+          _buildYedeklemeSection(),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // ── LİSANS SEKMESİ ────────────────────────────────────────────────────────
+
+  Widget _buildLisansTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHesapBilgileriSection(),
+          const SizedBox(height: 16),
+          _buildLisansBilgileriSection(),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // ── HAKKINDA SEKMESİ ──────────────────────────────────────────────────────
+
+  Widget _buildHakkindaTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [_buildHakkindaSection(), const SizedBox(height: 32)],
+      ),
+    );
+  }
+
+  // ── Hesap Bilgileri ───────────────────────────────────────────────────────
 
   Widget _buildHesapBilgileriSection() {
     final user = FirebaseAuth.instance.currentUser;
-    final phone = user?.phoneNumber ?? 'Doğrulanmamış';
+    final rawPhone = user?.phoneNumber ?? '';
+    final phone = rawPhone.isEmpty
+        ? 'Doğrulanmamış'
+        : rawPhone.replaceFirstMapped(
+            RegExp(r'^\+90(\d{3})(\d{3})(\d{2})(\d{2})$'),
+            (m) => '+90 ${m[1]} ${m[2]} ${m[3]} ${m[4]}',
+          );
     final email = user?.email ?? 'Bilinmiyor';
 
     return _buildCard(
@@ -205,7 +312,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  // ── Firma Bilgileri (düzenlenebilir) ─────────────────────────────────────
+  // ── Firma Bilgileri ───────────────────────────────────────────────────────
 
   Widget _buildFirmaBilgileriSection() {
     return _buildCard(
@@ -329,6 +436,60 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  // ── Yedekleme ─────────────────────────────────────────────────────────────
+
+  Widget _buildYedeklemeSection() {
+    return _buildCard(
+      title: 'VERİ YÖNETİMİ',
+      icon: Icons.backup_outlined,
+      iconColor: Colors.teal.shade600,
+      child: Column(
+        children: [
+          Text(
+            'Projelerinizi ve çizimlerinizi yedekleyin. Uygulama silinmeden önce yedek alarak verilerinizi koruyun.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _exportBackup,
+              icon: const Icon(Icons.upload, size: 18),
+              label: const Text('Yedekle'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _importBackup,
+              icon: Icon(Icons.download, size: 18, color: Colors.teal.shade600),
+              label: Text(
+                'Geri Yükle',
+                style: TextStyle(color: Colors.teal.shade600),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.teal.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Lisans Bilgileri ──────────────────────────────────────────────────────
 
   Widget _buildLisansBilgileriSection() {
@@ -372,7 +533,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           final String? countdownText;
 
           if (lic.isLicensed && lic.licenseExpiresAt != null) {
-            // Lisanslı — bitiş tarihi göster
             final d = lic.licenseExpiresAt!;
             countdownText =
                 '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
@@ -384,7 +544,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
           return Column(
             children: [
-              // Plan durumu
               Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 12,
@@ -429,8 +588,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ],
                 ),
               ),
-
-              // Detaylar
               const SizedBox(height: 12),
               _buildHakkindaRow(
                 Icons.category_outlined,
@@ -464,10 +621,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   'PDF',
                   '${lic.pdfProjects.length} proje için üretildi',
                 ),
-              ],
-
-              // Lisans anahtarı gir butonu (lisanssızsa)
-              if (!lic.isLicensed) ...[
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -478,9 +631,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           builder: (_) => const RedeemKeyScreen(),
                         ),
                       );
-                      if (result == true) {
-                        ref.invalidate(licenseProvider);
-                      }
+                      if (result == true) ref.invalidate(licenseProvider);
                     },
                     icon: const Icon(Icons.vpn_key, size: 18),
                     label: const Text('Lisans Anahtarı Gir'),
@@ -529,7 +680,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  // ── Kilitli alan (düzenlenemez) ──────────────────────────────────────────
+  // ── Yardımcı widget'lar ───────────────────────────────────────────────────
 
   Widget _buildLockedField({
     required IconData icon,
@@ -596,8 +747,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ],
     );
   }
-
-  // ── Yardımcı widget'lar ──────────────────────────────────────────────────
 
   Widget _buildCard({
     required String title,
