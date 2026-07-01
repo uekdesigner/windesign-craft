@@ -95,13 +95,6 @@ class LineDragTool {
     if (previewMmY != null) {
       addHorizontalLineAtY(previewMmY);
       ref.read(toolModeProvider.notifier).reset();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yatay çizgi eklendi - Seçim modu aktif'),
-          duration: Duration(milliseconds: 600),
-        ),
-      );
     }
     onClearPreview();
   }
@@ -170,13 +163,6 @@ class LineDragTool {
     if (previewMmX != null) {
       addVerticalLineAtX(previewMmX);
       ref.read(toolModeProvider.notifier).reset();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Dikey çizgi eklendi - Seçim modu aktif'),
-          duration: Duration(milliseconds: 600),
-        ),
-      );
     }
     onClearPreview();
   }

@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "744072834944-i85okt0llu0ii39feaom9b6ca3ca6vaa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.uekdesigner.windesigncraft",
+            "certificate_hash": "ca2ac868c3ac6b9861bcd03655406cdb3d0d333d"
+          }
+        },
+        {
           "client_id": "744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com",
           "client_type": 3
         }

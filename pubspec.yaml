@@ -2,7 +2,7 @@ name: windesign_craft
 description: "Pencere Çizim Sistemi"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+4
 
 environment:
   sdk: ^3.9.0
@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  animated_svg:
   flutter_localizations:
     sdk: flutter
   flutter_riverpod: ^2.5.1
@@ -37,6 +38,8 @@ dependencies:
   cloud_firestore: ^6.5.0
   google_sign_in: ^7.2.0
   cloud_functions: ^6.3.2
+  excel: ^4.0.6
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

@@ -11,6 +11,7 @@ import '../drawing/drawing_management_page.dart';
 import 'project_edit_page.dart';
 import '../../services/license_service.dart';
 import '../../providers/license_provider.dart';
+import '../../services/receipt_service.dart';
 
 class ProjectDetailPage extends ConsumerStatefulWidget {
   final Project project;
@@ -26,9 +27,15 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   List<Map<String, dynamic>> _payments = [];
   double _discount = 0;
   bool _isDiscountEditing = false;
+  String _paymentSearchQuery = '';
+  double _grandTotal = 0;
+  double _totalPaid = 0;
+  double _remaining = 0;
+  double _netTotal = 0;
 
   final TextEditingController _discountController = TextEditingController();
   final FocusNode _discountFocusNode = FocusNode();
+  final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -43,6 +50,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   void dispose() {
     _discountController.dispose();
     _discountFocusNode.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -122,12 +130,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             .deleteProject(_currentProject!.id);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${_currentProject!.name} projesi silindi!'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.of(context).pop();
         }
       } catch (e) {
@@ -263,15 +265,43 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
         if (shape.price != null) grandTotal += shape.price!;
       }
     }
+    final filteredPayments = _paymentSearchQuery.isEmpty
+        ? _payments
+        : _payments.where((p) {
+            final dekontNo = (p['dekont_no'] as String? ?? '').toLowerCase();
+            final note = (p['note'] as String? ?? '').toLowerCase();
+            final query = _paymentSearchQuery.toLowerCase();
+
+            // Tarih formatı: 15.06.2026
+            String dateStr = '';
+            try {
+              final date = DateTime.parse(p['paid_at'] as String);
+              dateStr =
+                  '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+            } catch (_) {}
+
+            return dekontNo.contains(query) ||
+                note.contains(query) ||
+                dateStr.contains(query);
+          }).toList();
 
     // Ödenen
-    double totalPaid = _payments.fold(
-      0,
-      (sum, p) => sum + (p['amount'] as double),
-    );
+    double totalPaid = _payments
+        .where((p) => (p['status'] as String?) != 'cancelled')
+        .fold(0, (sum, p) => sum + (p['amount'] as double));
 
     final netTotal = grandTotal - _discount;
     final remaining = netTotal - totalPaid;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _grandTotal = grandTotal;
+          _netTotal = netTotal;
+          _totalPaid = totalPaid;
+          _remaining = remaining;
+        });
+      }
+    });
 
     return Card(
       elevation: 4,
@@ -415,7 +445,55 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             ),
 
             const Divider(height: 16),
-
+            // Arama kutusu
+            if (_payments.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _searchCtrl,
+                onChanged: (val) {
+                  final formatted = _formatSearchInput(val, _searchCtrl);
+                  setState(() => _paymentSearchQuery = formatted);
+                },
+                decoration: InputDecoration(
+                  hintText: 'Dekont no veya tarih ara...',
+                  hintStyle: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade400,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 18,
+                    color: Colors.grey.shade400,
+                  ),
+                  suffixIcon: _paymentSearchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.clear,
+                            size: 16,
+                            color: Colors.grey.shade400,
+                          ),
+                          onPressed: () =>
+                              setState(() => _paymentSearchQuery = ''),
+                        )
+                      : null,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+            ],
             // Ödeme listesi
             if (_payments.isNotEmpty) ...[
               Text(
@@ -427,61 +505,156 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                 ),
               ),
               const SizedBox(height: 6),
-              ..._payments.map((p) {
+              ...filteredPayments.map((p) {
                 final date = DateTime.parse(p['paid_at'] as String);
                 final dateStr =
                     '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-                final note = p['note'] as String?;
+                final isCancelledNote = (p['status'] as String?) == 'cancelled';
+                final note = isCancelledNote
+                    ? (p['cancel_reason'] as String? ?? p['note'] as String?)
+                    : (p['note'] as String?);
+                final dekontNo = p['dekont_no'] as String?;
+                final isCancelled = (p['status'] as String?) == 'cancelled';
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 14,
-                        color: Colors.green.shade600,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        dateStr,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isCancelled ? Colors.red.shade50 : null,
+                      borderRadius: BorderRadius.circular(6),
+                      border: isCancelled
+                          ? Border.all(color: Colors.red.shade200)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isCancelled
+                              ? Icons.cancel_outlined
+                              : Icons.check_circle,
+                          size: 14,
+                          color: isCancelled
+                              ? Colors.red.shade400
+                              : Colors.green.shade600,
                         ),
-                      ),
-                      if (note != null && note.isNotEmpty) ...[
                         const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            note,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dateStr,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isCancelled
+                                    ? Colors.red.shade400
+                                    : Colors.grey.shade600,
+                                decoration: isCancelled
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
+                            if (dekontNo != null)
+                              Text(
+                                dekontNo,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (note != null && note.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              note,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ] else
+                          const Spacer(),
+                        Text(
+                          '₺${(p['amount'] as double).toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isCancelled
+                                ? Colors.red.shade400
+                                : Colors.green.shade700,
+                            decoration: isCancelled
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
-                      ] else
-                        const Spacer(),
-                      Text(
-                        '₺${(p['amount'] as double).toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline,
-                          size: 16,
-                          color: Colors.red.shade300,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () => _deletePayment(p['id'] as int),
-                      ),
-                    ],
+                        // Dekont paylaş
+                        if (!isCancelled)
+                          IconButton(
+                            icon: Icon(
+                              Icons.receipt_outlined,
+                              size: 16,
+                              color: Colors.blue.shade400,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Dekont Paylaş',
+                            onPressed: () => ReceiptService.shareReceipt(
+                              payment: p,
+                              customerName: _currentProject!.name,
+                              customerPhone: _currentProject!.phone,
+                              customerAddress: _currentProject!.address,
+                              grandTotal: netTotal,
+                              totalPaid: totalPaid,
+                              remaining: remaining,
+                              allPayments: _payments,
+                              discount: _discount,
+                            ),
+                          ),
+
+                        if (!isCancelled)
+                          IconButton(
+                            icon: Icon(
+                              Icons.block,
+                              size: 16,
+                              color: Colors.red.shade300,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'İptal Et',
+                            onPressed: () => _cancelPayment(p),
+                          ),
+                        // İptal dekontu paylaş
+                        if (isCancelled)
+                          IconButton(
+                            icon: Icon(
+                              Icons.receipt_long_outlined,
+                              size: 16,
+                              color: Colors.red.shade300,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'İptal Dekontu Paylaş',
+                            onPressed: () => ReceiptService.shareCancelReceipt(
+                              payment: p,
+                              customerName: _currentProject!.name,
+                              customerPhone: _currentProject!.phone,
+                              customerAddress: _currentProject!.address,
+                              grandTotal: _grandTotal,
+                              discount: _discount,
+                              totalPaid: _totalPaid,
+                              remaining: _remaining,
+                              allPayments: _payments,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 );
               }),
@@ -518,6 +691,58 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
         ),
       ),
     );
+  }
+
+  String _formatSearchInput(String val, TextEditingController ctrl) {
+    if (val.isEmpty) return val;
+
+    // D veya d ile başlıyorsa dekont formatı
+    if (val.toLowerCase().startsWith('d')) {
+      String result = val.toUpperCase();
+
+      // "D" → "DKT-"
+      if (result == 'D') {
+        result = 'DKT-';
+        ctrl.text = result;
+        ctrl.selection = TextSelection.collapsed(offset: result.length);
+        return result;
+      }
+
+      // "DKT-YYYY" → "DKT-YYYY-"
+      final dktYearPattern = RegExp(r'^DKT-(\d{4})$');
+      if (dktYearPattern.hasMatch(result)) {
+        result = '$result-';
+        ctrl.text = result;
+        ctrl.selection = TextSelection.collapsed(offset: result.length);
+        return result;
+      }
+
+      return result;
+    }
+
+    // Rakamla başlıyorsa tarih formatı
+    if (RegExp(r'^\d').hasMatch(val)) {
+      final digits = val.replaceAll(RegExp(r'[^\d]'), '');
+      String result = digits;
+
+      if (digits.length >= 3) {
+        result = '${digits.substring(0, 2)}.${digits.substring(2)}';
+      }
+      if (digits.length >= 5) {
+        result =
+            '${digits.substring(0, 2)}.${digits.substring(2, 4)}.${digits.substring(4)}';
+      }
+      if (digits.length > 8) {
+        result =
+            '${digits.substring(0, 2)}.${digits.substring(2, 4)}.${digits.substring(4, 8)}';
+      }
+
+      ctrl.text = result;
+      ctrl.selection = TextSelection.collapsed(offset: result.length);
+      return result;
+    }
+
+    return val;
   }
 
   Widget _buildPaymentRow(
@@ -559,55 +784,57 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Ödeme Ekle', style: TextStyle(fontSize: 16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Tutar (₺)',
-                  prefixText: '₺',
-                  border: OutlineInputBorder(),
-                ),
-                autofocus: true,
-              ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    setDialogState(() => selectedDate = picked);
-                  }
-                },
-                child: InputDecorator(
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
-                    labelText: 'Tarih',
+                    labelText: 'Tutar (₺)',
+                    prefixText: '₺',
                     border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today, size: 18),
                   ),
-                  child: Text(
-                    '${selectedDate.day.toString().padLeft(2, '0')}.${selectedDate.month.toString().padLeft(2, '0')}.${selectedDate.year}',
-                    style: const TextStyle(fontSize: 14),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Tarih',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today, size: 18),
+                    ),
+                    child: Text(
+                      '${selectedDate.day.toString().padLeft(2, '0')}.${selectedDate.month.toString().padLeft(2, '0')}.${selectedDate.year}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Not (opsiyonel)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Not (opsiyonel)',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -632,6 +859,31 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
 
                 await _loadPayments();
                 if (mounted) Navigator.pop(ctx);
+
+                // Dekont paylaş — en güncel veriyi tekrar çek
+                final freshPayments = await LocalDatabase()
+                    .getPaymentsByProject(_currentProject!.id);
+                if (freshPayments.isNotEmpty && mounted) {
+                  final lastPayment = freshPayments.first;
+
+                  // Güncel toplamları hesapla
+                  final freshTotalPaid = freshPayments
+                      .where((p) => (p['status'] as String?) != 'cancelled')
+                      .fold(0.0, (sum, p) => sum + (p['amount'] as double));
+                  final freshRemaining = _netTotal - freshTotalPaid;
+
+                  await ReceiptService.shareReceipt(
+                    payment: lastPayment,
+                    customerName: _currentProject!.name,
+                    customerPhone: _currentProject!.phone,
+                    customerAddress: _currentProject!.address,
+                    grandTotal: _grandTotal,
+                    discount: _discount,
+                    totalPaid: freshTotalPaid,
+                    remaining: freshRemaining,
+                    allPayments: freshPayments,
+                  );
+                }
               },
               child: const Text('Kaydet'),
             ),
@@ -641,37 +893,114 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     );
   }
 
-  Future<void> _deletePayment(int id) async {
-    await LocalDatabase().deletePayment(id);
+  Future<void> _cancelPayment(Map<String, dynamic> payment) async {
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Ödemeyi İptal Et'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Bu ödeme iptal edilecek. İptal dekontu oluşturulsun mu?\n\nBu işlem geri alınamaz.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'İptal Nedeni',
+                  hintText: 'Örn: Müşteri talebi, Hatalı tutar...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'İptal Et',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final reason = reasonCtrl.text.trim().isEmpty
+        ? 'Manuel iptal'
+        : reasonCtrl.text.trim();
+
+    await LocalDatabase().cancelPayment(payment['id'] as int, reason: reason);
     await _loadPayments();
+
+    if (mounted) {
+      // İptal sonrası güncel veriyi çek
+      final freshPayments = await LocalDatabase().getPaymentsByProject(
+        _currentProject!.id,
+      );
+      final freshTotalPaid = freshPayments
+          .where((p) => (p['status'] as String?) != 'cancelled')
+          .fold(0.0, (sum, p) => sum + (p['amount'] as double));
+      final freshRemaining = _netTotal - freshTotalPaid;
+
+      // İptal edilen ödemenin güncel halini al
+      final cancelledPayment = freshPayments.firstWhere(
+        (p) => p['id'] == payment['id'],
+        orElse: () => {
+          ...payment,
+          'cancelled_at': DateTime.now().toIso8601String(),
+          'cancel_reason': reason,
+          'status': 'cancelled',
+        },
+      );
+
+      await ReceiptService.shareCancelReceipt(
+        payment: cancelledPayment,
+        customerName: _currentProject!.name,
+        customerPhone: _currentProject!.phone,
+        customerAddress: _currentProject!.address,
+        grandTotal: _grandTotal,
+        discount: _discount,
+        totalPaid: freshTotalPaid,
+        remaining: freshRemaining,
+        allPayments: freshPayments,
+      );
+    }
   }
 
   // 🌅 YATAY MOD - Yan yana düzen
   Widget _buildLandscapeLayout(List<Drawing> drawings) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // SOL: Proje Bilgileri
-          Expanded(
-            flex: 1,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildCompactProjectInfoCard(),
-                  const SizedBox(height: 16),
-                  _buildDrawingButtons(drawings),
-                  const SizedBox(height: 16),
-                  _buildPaymentSection(drawings),
-                ],
-              ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildCompactProjectInfoCard(),
+                const SizedBox(height: 16),
+                _buildDrawingButtons(drawings),
+                const SizedBox(height: 16),
+                _buildPaymentSection(drawings),
+              ],
             ),
           ),
-
-          const SizedBox(width: 16),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

@@ -20,13 +20,6 @@ class ShortLineDragTool {
       addShortHorizontalLineAtMm(lastMmPos);
       ref.read(toolModeProvider.notifier).reset();
       clearPreview();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kısa yatay çizgi eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
     } else {
       clearPreview();
     }
@@ -42,13 +35,6 @@ class ShortLineDragTool {
       addShortVerticalLineAtMm(lastMmPos);
       ref.read(toolModeProvider.notifier).reset();
       clearPreview();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kısa dikey çizgi eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
     } else {
       clearPreview();
     }

@@ -300,16 +300,16 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       controller.updateShape(selectedIndex, updated);
       ref.read(toolModeProvider.notifier).reset();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            side == 'right'
-                ? 'Sağ panel eklendi: ${result['width']!.toInt()}×${result['height']!.toInt()} mm'
-                : 'Sol panel eklendi: ${result['width']!.toInt()}×${result['height']!.toInt()} mm',
-          ),
-          duration: const Duration(milliseconds: 800),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text(
+      //       side == 'right'
+      //           ? 'Sağ panel eklendi: ${result['width']!.toInt()}×${result['height']!.toInt()} mm'
+      //           : 'Sol panel eklendi: ${result['width']!.toInt()}×${result['height']!.toInt()} mm',
+      //     ),
+      //     duration: const Duration(milliseconds: 800),
+      //   ),
+      // );
     }
   }
 
@@ -355,12 +355,12 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       );
       controller.updateShape(controllerState.selectedIndex, newSpec);
       ref.read(toolModeProvider.notifier).reset();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yan panele desenli cam eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text('Yan panele desenli cam eklendi'),
+      //     duration: Duration(milliseconds: 500),
+      //   ),
+      // );
       return; // ← ana şekil kodu çalışmaz
     }
 
@@ -390,12 +390,12 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       final element = DotGridTool.createForPanel(panel);
       controller.addInternalElement(element);
       ref.read(toolModeProvider.notifier).reset();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Desenli cam eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text('Desenli cam eklendi'),
+      //     duration: Duration(milliseconds: 500),
+      //   ),
+      // );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -492,13 +492,6 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       )).notifier,
     );
     controller.deleteShape(controllerState.selectedIndex);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Çizim silindi'),
-        duration: Duration(milliseconds: 800),
-      ),
-    );
   }
 
   void _showPanelEditorForHorizontalLine(InternalElement element) async {
@@ -567,12 +560,6 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
 
     if (result != null && mounted) {
       GapCalculator.applyNewGaps(controller, horizontalLines, result);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Panel ölçüleri güncellendi'),
-          duration: Duration(seconds: 1),
-        ),
-      );
     }
   }
 
@@ -1016,18 +1003,18 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
                             }
 
                             ref.read(toolModeProvider.notifier).reset();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  currentTool == ToolMode.horizontalLine ||
-                                          currentTool ==
-                                              ToolMode.shortHorizontalLine
-                                      ? 'Yan panele yatay çizgi eklendi'
-                                      : 'Yan panele dikey çizgi eklendi',
-                                ),
-                                duration: const Duration(milliseconds: 500),
-                              ),
-                            );
+                            // ScaffoldMessenger.of(context).showSnackBar(
+                            //   SnackBar(
+                            //     content: Text(
+                            //       currentTool == ToolMode.horizontalLine ||
+                            //               currentTool ==
+                            //                   ToolMode.shortHorizontalLine
+                            //           ? 'Yan panele yatay çizgi eklendi'
+                            //           : 'Yan panele dikey çizgi eklendi',
+                            //     ),
+                            //     duration: const Duration(milliseconds: 500),
+                            //   ),
+                            // );
                           }
 
                           setState(() {
@@ -1230,12 +1217,7 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       controller.addInternalElement(newElement);
       ref.read(toolModeProvider.notifier).reset();
       _clearPreview();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kısa yatay çizgi eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
+
       return;
     }
 
@@ -1365,12 +1347,7 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       controller.addInternalElement(newElement);
       ref.read(toolModeProvider.notifier).reset();
       _clearPreview();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kısa dikey çizgi eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
+
       return;
     }
 
@@ -1621,12 +1598,12 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       );
       controller.updateShape(controllerState.selectedIndex, newSpec);
       ref.read(toolModeProvider.notifier).reset();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yan panele camsız profil eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text('Yan panele camsız profil eklendi'),
+      //     duration: Duration(milliseconds: 500),
+      //   ),
+      // );
       return; // ← ana şekil kodu çalışmaz
     }
 
@@ -1656,12 +1633,12 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       final element = LineGridTool.createForPanel(panel);
       controller.addInternalElement(element);
       ref.read(toolModeProvider.notifier).reset();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Çizgili cam eklendi'),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text('Çizgili cam eklendi'),
+      //     duration: Duration(milliseconds: 500),
+      //   ),
+      // );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -1926,7 +1903,7 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
         updated,
       );
       controller.updateShape(controllerState.selectedIndex, newSpec);
-      _resetToolAndNotify('Yan panele üçgen eklendi');
+      // _resetToolAndNotify('Yan panele üçgen eklendi');
       return; // ← ana şekil kodu çalışmaz
     }
 
@@ -1938,7 +1915,7 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
     if (panel != null) {
       final element = TriangleTool.createForMainPanel(panel, direction, spec);
       controller.addInternalElement(element);
-      _resetToolAndNotify('Üçgen eklendi');
+      // _resetToolAndNotify('Üçgen eklendi');
       return;
     }
 
@@ -1996,16 +1973,16 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
       );
       controller.updateShape(controllerState.selectedIndex, newSpec);
       ref.read(toolModeProvider.notifier).reset();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            direction == 'right'
-                ? 'Yan panele sağa ok eklendi'
-                : 'Yan panele sola ok eklendi',
-          ),
-          duration: const Duration(milliseconds: 500),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text(
+      //       direction == 'right'
+      //           ? 'Yan panele sağa ok eklendi'
+      //           : 'Yan panele sola ok eklendi',
+      //     ),
+      //     duration: const Duration(milliseconds: 500),
+      //   ),
+      //);
       return; // ← ana şekil kodu çalışmaz
     }
 
@@ -2044,16 +2021,16 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
     controller.addInternalElement(element);
     ref.read(toolModeProvider.notifier).reset();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          direction == 'right'
-              ? 'Sağa sürme oku eklendi'
-              : 'Sola sürme oku eklendi',
-        ),
-        duration: const Duration(milliseconds: 500),
-      ),
-    );
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(
+    //     content: Text(
+    //       direction == 'right'
+    //           ? 'Sağa sürme oku eklendi'
+    //           : 'Sola sürme oku eklendi',
+    //     ),
+    //     duration: const Duration(milliseconds: 500),
+    //   ),
+    // );
   }
 
   Widget _buildTopToolbar(ToolMode currentTool) {

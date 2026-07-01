@@ -1,3 +1,5 @@
+// lib/shared/widgets/auth_gate.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
@@ -6,6 +8,7 @@ import '../../screens/login_screen.dart';
 import '../../home/home_page.dart';
 import '../../screens/locked_screen.dart';
 import '../../screens/phone_verification_screen.dart';
+import '../../screens/splash_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -24,7 +27,7 @@ class AuthGate extends ConsumerWidget {
         }
         // Telefon doğrulanmamışsa → doğrulama ekranı
         if (user.phoneNumber == null || user.phoneNumber!.isEmpty) {
-          return PhoneVerificationScreen();
+          return const PhoneVerificationScreen();
         }
         // Telefon doğrulanmış → lisans kontrolüne geç
         return const _LicenseGate();
@@ -34,30 +37,53 @@ class AuthGate extends ConsumerWidget {
 }
 
 /// Giriş yapılmış kullanıcı için lisansı yükler ve sonucuna göre yönlendirir.
-class _LicenseGate extends ConsumerWidget {
+class _LicenseGate extends ConsumerStatefulWidget {
   const _LicenseGate();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LicenseGate> createState() => _LicenseGateState();
+}
+
+class _LicenseGateState extends ConsumerState<_LicenseGate> {
+  bool _animationDone = false;
+  bool _licenseReady = false;
+  Object? _licenseData; // LicenseModel türünde tut
+
+  @override
+  Widget build(BuildContext context) {
     final license = ref.watch(licenseProvider);
 
-    return license.when(
-      loading: () =>
-          const _LoadingScaffold(message: 'Lisans kontrol ediliyor...'),
-      error: (e, _) => _ErrorScaffold(
-        message:
-            'Lisans bilgisi alınamadı.\nİnternet bağlantını kontrol et.\n\n$e',
-        onRetry: () => ref.invalidate(licenseProvider),
-      ),
-      data: (lic) {
-        // 12 gün dolmuş ve lisanssız → kilitli ekran
-        if (lic.isLocked || (lic.isTrial && (lic.trialDaysLeft ?? 0) < 0)) {
-          return LockedScreen(daysOverdue: lic.trialDaysLeft?.abs());
-        }
-        // Deneme devam ediyor veya lisanslı → ana ekran
-        return const HomePage();
+    license.whenData((lic) {
+      if (!_licenseReady) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted)
+            setState(() {
+              _licenseReady = true;
+              _licenseData = lic;
+            });
+        });
+      }
+    });
+
+    // İkisi de hazırsa geçiş yap
+    if (_animationDone && _licenseReady) {
+      return _buildDestination(_licenseData);
+    }
+
+    // Henüz geçiş yok — splash oynasın
+    return SplashScreen(
+      key: const ValueKey('license_splash'),
+      onComplete: () {
+        if (mounted) setState(() => _animationDone = true);
       },
     );
+  }
+
+  Widget _buildDestination(dynamic lic) {
+    if (lic.isLocked || (lic.isTrial && (lic.trialDaysLeft ?? 0) < 0)) {
+      return LockedScreen(daysOverdue: lic.trialDaysLeft?.abs());
+    }
+    return const HomePage();
   }
 }
 

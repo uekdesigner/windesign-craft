@@ -100,13 +100,6 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       await ref.read(projectProvider.notifier).updateProject(updatedProject);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Proje başarıyla güncellendi!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
         // 🚨 BURASI DEĞİŞİYOR: Boş pop yerine güncellenmiş projeyi geri gönder
         Navigator.pop(context, updatedProject);
       }

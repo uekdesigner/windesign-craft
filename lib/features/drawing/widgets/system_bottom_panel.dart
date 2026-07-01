@@ -7,7 +7,7 @@ import '../../../services/database.dart';
 import '../../../services/database_provider.dart';
 import '../../../services/window_system_service.dart';
 import '../providers/drawing_controller_provider.dart';
-import '../providers/drawing_provider.dart';
+import '../../../services/metretul calculator.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -393,15 +393,6 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
 
     controller.updateShape(controllerState.selectedIndex, updated);
     setState(() => _isSaved = true);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Teknik bilgiler kaydedildi'),
-          duration: Duration(milliseconds: 1000),
-        ),
-      );
-    }
   }
 
   // ==================== DİYALOGLAR ====================
@@ -494,6 +485,70 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
             child: const Text('Sil'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMetretulInfo(ShapeSpec shape) {
+    final result = MetretulCalculator.calculateForShape(shape);
+    if (result.toplamMm <= 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Metretül',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade500,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Kasa: ${result.sabitIskeletM.toStringAsFixed(2)} m',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF1F1F1F),
+                    ),
+                  ),
+                ),
+                if (result.kanatMm > 0)
+                  Expanded(
+                    child: Text(
+                      'Kanat: ${result.kanatM.toStringAsFixed(2)} m'
+                      ' (${result.kanatSayisi} adet)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF1F1F1F),
+                      ),
+                    ),
+                  ),
+                Text(
+                  'Toplam: ${result.toplamM.toStringAsFixed(2)} m',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1F1F1F),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1343,6 +1398,21 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                               ),
                             ),
                             const SizedBox(height: 8),
+                            // Metretül bilgisi — fiyatın üstünde
+                            Builder(
+                              builder: (context) {
+                                final controllerState = ref.read(
+                                  drawingControllerProvider((
+                                    projectId: widget.projectId,
+                                    drawingId: widget.drawingId,
+                                  )),
+                                );
+                                final shape = controllerState.currentShape;
+                                if (shape == null)
+                                  return const SizedBox.shrink();
+                                return _buildMetretulInfo(shape);
+                              },
+                            ),
                             TextField(
                               controller: _priceController,
                               keyboardType:

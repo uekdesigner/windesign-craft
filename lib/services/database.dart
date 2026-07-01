@@ -17,23 +17,17 @@ class LocalDatabase {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'windesign_craftv2.db');
 
-    // NOT: Canlıdaki kullanıcıların verilerinin silinmemesi için
-    // deleteDatabase(path) veya windesign_craftv1.db silme işlemlerini buradan kaldırdık.
-    // Eğer v1'den v2'ye veri taşınacaksa bu onUpgrade veya özel bir migration servisiyle yapılmalıdır.
-
     return await openDatabase(
       path,
-      version:
-          2, // 💡 YENİ: Versiyon 2'ye yükseltildi (yeni tablolar/kolonlar için)
+      version: 3,
       onCreate: _createTables,
-      onUpgrade: _handleUpgrade, // 💡 TÜM GÜNCELLEMELER BURADA YÖNETİLECEK
+      onUpgrade: _handleUpgrade,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
   }
 
-  // Yalnızca veritabanı İLK DEFA oluşurken çalışır
   Future<void> _createTables(Database db, int version) async {
     await db.execute('''
       CREATE TABLE window_systems (
@@ -132,24 +126,25 @@ class LocalDatabase {
         amount REAL NOT NULL,
         paid_at TEXT NOT NULL,
         note TEXT,
+        dekont_no TEXT UNIQUE,
+        status TEXT NOT NULL DEFAULT 'active',
+        cancelled_at TEXT,
+        cancel_reason TEXT,
         FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       )
     ''');
   }
 
-  // Eski sürüm kullanan kullanıcılar uygulamayı güncellediğinde burası tetiklenir
   Future<void> _handleUpgrade(
     Database db,
     int oldVersion,
     int newVersion,
   ) async {
     if (oldVersion < 2) {
-      // Örnek: Eğer kullanıcıda eski şema varsa dinamik olarak eksik kolonları tamamla
       await _ensureDrawingColumns(db);
       await _ensureUnitPriceColumns(db);
       await _ensureProjectColumns(db);
 
-      // Payments tablosu eski versiyonda yoksa oluştur
       await db.execute('''
         CREATE TABLE IF NOT EXISTS payments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -161,9 +156,32 @@ class LocalDatabase {
         )
       ''');
     }
+
+    if (oldVersion < 3) {
+      await _ensurePaymentColumns(db);
+    }
   }
 
-  // Güvenlik amaçlı dinamik kontroller (onUpgrade içinden çağrılır)
+  Future<void> _ensurePaymentColumns(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(payments)');
+    final columnNames = columns.map((c) => c['name'] as String).toSet();
+
+    if (!columnNames.contains('dekont_no')) {
+      await db.execute('ALTER TABLE payments ADD COLUMN dekont_no TEXT');
+    }
+    if (!columnNames.contains('status')) {
+      await db.execute(
+        "ALTER TABLE payments ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
+      );
+    }
+    if (!columnNames.contains('cancelled_at')) {
+      await db.execute('ALTER TABLE payments ADD COLUMN cancelled_at TEXT');
+    }
+    if (!columnNames.contains('cancel_reason')) {
+      await db.execute('ALTER TABLE payments ADD COLUMN cancel_reason TEXT');
+    }
+  }
+
   Future<void> _ensureProjectColumns(Database db) async {
     final columns = await db.rawQuery('PRAGMA table_info(projects)');
     final columnNames = columns.map((c) => c['name'] as String).toSet();
@@ -219,7 +237,6 @@ class LocalDatabase {
 
   Future<int> insertProject(Map<String, dynamic> project) async {
     final db = await database;
-    // 💡 İYİLEŞTİRME: Aynı ID gelirse hata fırlatmak yerine üzerine yazar/günceller.
     return await db.insert(
       'projects',
       project,
@@ -243,7 +260,6 @@ class LocalDatabase {
       if (result == 0) throw Exception('Proje bulunamadı: $id');
       return result;
     } catch (e) {
-      print('❌ Delete project error: $e');
       rethrow;
     }
   }
@@ -371,11 +387,25 @@ class LocalDatabase {
 
   // ==================== ÖDEME İŞLEMLERİ ====================
 
+  /// Dekont numarası üretir: DKT-YYYY-NNNN
+  Future<String> _generateDekontNo(Database db) async {
+    final year = DateTime.now().year;
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM payments WHERE dekont_no LIKE 'DKT-$year-%'",
+    );
+    final count = ((result.first['count'] as int?) ?? 0) + 1;
+    return 'DKT-$year-${count.toString().padLeft(4, '0')}';
+  }
+
   Future<int> insertPayment(Map<String, dynamic> payment) async {
     final db = await database;
+    final dekontNo = await _generateDekontNo(db);
+    final paymentWithDekont = Map<String, dynamic>.from(payment);
+    paymentWithDekont['dekont_no'] = dekontNo;
+    paymentWithDekont['status'] = 'active';
     return await db.insert(
       'payments',
-      payment,
+      paymentWithDekont,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -392,10 +422,60 @@ class LocalDatabase {
     );
   }
 
+  Future<Map<String, dynamic>?> getPaymentById(int id) async {
+    final db = await database;
+    final maps = await db.query(
+      'payments',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  Future<Map<String, dynamic>?> getPaymentByDekontNo(String dekontNo) async {
+    final db = await database;
+    final maps = await db.query(
+      'payments',
+      where: 'dekont_no = ?',
+      whereArgs: [dekontNo],
+      limit: 1,
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  /// Ödemeyi siler değil, iptal eder.
+  Future<int> cancelPayment(int id, {String? reason}) async {
+    final db = await database;
+    return await db.update(
+      'payments',
+      {
+        'status': 'cancelled',
+        'cancelled_at': DateTime.now().toIso8601String(),
+        'cancel_reason': reason ?? 'Manuel iptal',
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Gerçekten silmek gerekirse (sadece backup restore gibi özel durumlar için).
   Future<int> deletePayment(int id) async {
     final db = await database;
     return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
   }
+
+  // ==================== EXCEL EXPORT ====================
+
+  /// Tüm projeleri ve ödemeleri döner (Excel export için).
+  Future<Map<String, dynamic>> getExportData() async {
+    final db = await database;
+    final projects = await db.query('projects', orderBy: 'created_at DESC');
+    final payments = await db.query('payments', orderBy: 'paid_at DESC');
+    return {'projects': projects, 'payments': payments};
+  }
+
+  // ==================== DURUM ====================
 
   Future<Map<String, dynamic>> getDatabaseStatus() async {
     final db = await database;
@@ -404,7 +484,7 @@ class LocalDatabase {
     return {
       'projects': (projectsCount.first['COUNT(*)'] as int?) ?? 0,
       'drawings': (drawingsCount.first['COUNT(*)'] as int?) ?? 0,
-      'version': 2,
+      'version': 3,
     };
   }
 }

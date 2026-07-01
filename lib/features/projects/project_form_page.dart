@@ -106,15 +106,6 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
         await notifier.addProject(project);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${project.name} projesi oluşturuldu!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
-
           // 🚨 DEĞİŞİKLİK BURADA:
           // 1. Önce Projelerim listesine git (Ana Sayfa'yı koruyarak)
           Navigator.of(context).pushAndRemoveUntil(

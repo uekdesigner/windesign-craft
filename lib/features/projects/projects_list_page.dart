@@ -156,9 +156,6 @@ class _ProjectsListPageState extends ConsumerState<ProjectsListPage> {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               ref.read(projectProvider.notifier).refresh();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Projeler yenileniyor...')),
-              );
             },
             tooltip: 'Yenile',
           ),

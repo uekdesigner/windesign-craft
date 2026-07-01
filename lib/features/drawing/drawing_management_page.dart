@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/metretul calculator.dart';
 import 'providers/drawing_provider.dart';
 import '../../models/drawing.dart';
 import 'drawing_canvas_page.dart';
@@ -350,14 +351,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
                   .read(drawingProvider(widget.projectId).notifier)
                   .deleteDrawing(drawingId);
               Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Çizim silindi'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 2),
-                ),
-              );
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Sil'),
@@ -369,13 +362,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
 
   void _refreshDrawings() {
     ref.read(drawingProvider(widget.projectId).notifier).loadDrawings();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Çizimler yenilendi'),
-        duration: Duration(seconds: 1),
-      ),
-    );
   }
 
   Widget _buildEmptyState() {
@@ -415,6 +401,7 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
     return Card(
       margin: EdgeInsets.fromLTRB(16, index == 0 ? 16 : 8, 16, 8),
       child: ListTile(
+        isThreeLine: true,
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -468,6 +455,7 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
             ),
             if (drawing.shapes.isNotEmpty) ...[
               const SizedBox(height: 4),
+              _buildMetretulRow(drawing),
               _buildPriceRow(drawing),
             ],
           ],
@@ -520,6 +508,41 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
         ),
         onTap: () => _navigateToDrawingCanvas(drawing),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+    );
+  }
+
+  Widget _buildMetretulRow(Drawing drawing) {
+    // GEÇİCİ DEBUG — her zaman bir şey göster
+    final shapeCount = drawing.shapes.length;
+    if (shapeCount == 0) {
+      return Text(
+        '(shapes boş)',
+        style: TextStyle(fontSize: 10, color: Colors.red),
+      );
+    }
+
+    final result = MetretulCalculator.calculateForShapes(drawing.shapes);
+
+    // Sonucu debug et
+    debugPrint(
+      'Metretül: sabit=${result.sabitIskeletMm}, kanat=${result.kanatMm}, toplam=${result.toplamMm}',
+    );
+
+    if (result.toplamMm <= 0) {
+      return Text(
+        '(toplam=0)',
+        style: TextStyle(fontSize: 10, color: Colors.orange),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        'Metretül: ${result.sabitIskeletM.toStringAsFixed(2)}m kasa'
+        '${result.kanatMm > 0 ? ' + ${result.kanatM.toStringAsFixed(2)}m kanat' : ''}'
+        ' = ${result.toplamM.toStringAsFixed(2)}m',
+        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
       ),
     );
   }
@@ -766,10 +789,10 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
         firmaAdi: firmaSettings.firmaAdi.isEmpty
             ? 'Firma Adı'
             : firmaSettings.firmaAdi,
-        telefon: authUser?.phoneNumber ?? firmaSettings.telefon,
+        telefon: firmaSettings.telefon,
         adres: firmaSettings.adres,
         logoPath: firmaSettings.logoPath,
-        email: authUser?.email,
+        email: firmaSettings.email,
       );
 
       // Geçici proje nesnesi — sadece PDF için
@@ -793,15 +816,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
         _lastPdfPath = path;
       });
       await _loadSavedPdfs();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PDF oluşturuldu'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
     } catch (e) {
       setState(() => _isPdfGenerating = false);
       if (!mounted) return;

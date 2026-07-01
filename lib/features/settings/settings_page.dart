@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,7 @@ import 'package:path/path.dart' as path;
 import '../../providers/license_provider.dart';
 import '../../screens/redeem_key_screen.dart';
 import '../../services/backup_service.dart';
+import '../../services/excel_export_service.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -21,7 +23,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage>
     with SingleTickerProviderStateMixin {
-  // ── Sabit yazılım bilgileri ───────────────────────────────────────────────
   static const String _yazilimAdi = 'WinDesign Craft Pro';
   static const String _ureticiFirma = 'UEK DESIGNER';
   static const String _ureticiFirmaMail = 'info@uekdesigner.com';
@@ -32,9 +33,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   static const String _keyFirmaAdi = 'firma_adi';
   static const String _keyFirmaAdres = 'firma_adres';
   static const String _keyLogoPath = 'logo_path';
+  static const String _keyFirmaTel = 'firma_tel';
+  static const String _keyFirmaEmail = 'firma_email';
 
   final TextEditingController _firmaAdiCtrl = TextEditingController();
   final TextEditingController _firmaAdresCtrl = TextEditingController();
+  final TextEditingController _firmaTelCtrl = TextEditingController();
+  final TextEditingController _firmaEmailCtrl = TextEditingController();
 
   String? _logoPath;
   bool _isLoading = true;
@@ -54,6 +59,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     _firmaAdiCtrl.dispose();
     _firmaAdresCtrl.dispose();
     _tabController.dispose();
+    _firmaTelCtrl.dispose();
+    _firmaEmailCtrl.dispose();
     super.dispose();
   }
 
@@ -62,6 +69,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     setState(() {
       _firmaAdiCtrl.text = prefs.getString(_keyFirmaAdi) ?? '';
       _firmaAdresCtrl.text = prefs.getString(_keyFirmaAdres) ?? '';
+      final tel = prefs.getString(_keyFirmaTel) ?? '';
+      _firmaTelCtrl.text = tel.startsWith('+90 ') ? tel.substring(4) : tel;
+      _firmaEmailCtrl.text = prefs.getString(_keyFirmaEmail) ?? '';
       _logoPath = prefs.getString(_keyLogoPath);
       _isLoading = false;
     });
@@ -72,19 +82,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyFirmaAdi, _firmaAdiCtrl.text.trim());
     await prefs.setString(_keyFirmaAdres, _firmaAdresCtrl.text.trim());
+    await prefs.setString(_keyFirmaTel, '+90 ${_firmaTelCtrl.text.trim()}');
+    await prefs.setString(_keyFirmaEmail, _firmaEmailCtrl.text.trim());
     if (_logoPath != null) {
       await prefs.setString(_keyLogoPath, _logoPath!);
     }
     setState(() => _isSaving = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ayarlar kaydedildi'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   Future<void> _pickLogo() async {
@@ -168,6 +171,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     }
   }
 
+  Future<void> _exportExcel() async {
+    try {
+      await ExcelExportService.exportAndShare();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Excel aktarım hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,7 +194,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         backgroundColor: const Color.fromARGB(255, 110, 178, 247),
         foregroundColor: Colors.white,
         actions: [
-          // Kaydet butonu sadece Genel sekmesinde aktif
           ListenableBuilder(
             listenable: _tabController,
             builder: (_, __) {
@@ -242,6 +259,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           _buildLogoSection(),
           const SizedBox(height: 16),
           _buildYedeklemeSection(),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _exportExcel,
+              icon: Icon(
+                Icons.table_chart_outlined,
+                size: 18,
+                color: Colors.teal.shade600,
+              ),
+              label: Text(
+                'Excel\'e Aktar',
+                style: TextStyle(color: Colors.teal.shade600),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.teal.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 32),
         ],
       ),
@@ -326,6 +366,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             label: 'Firma Adı',
             hint: 'Örn: ABC Doğrama',
             icon: Icons.business_outlined,
+          ),
+          const SizedBox(height: 12),
+          // Telefon alanı — +90 sabit prefix, formatter ile otomatik format
+          TextField(
+            controller: _firmaTelCtrl,
+            keyboardType: TextInputType.phone,
+            maxLength: 13,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[\d\s]')),
+              _PhoneInputFormatter(),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Telefon',
+              hintText: '555 000 00 00',
+              prefixText: '+90 ',
+              prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14),
+              prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              isDense: true,
+              counterText: '',
+            ),
+            style: const TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _firmaEmailCtrl,
+            label: 'E-posta',
+            hint: 'Örn: info@firma.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 12),
           _buildTextField(
@@ -818,12 +896,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   }
 }
 
+// ── Telefon formatter ─────────────────────────────────────────────────────────
+
+class _PhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.length > 10) return oldValue;
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i == 3 || i == 6 || i == 8) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+
+    final formatted = buffer.toString();
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
 // ── Ayarları okumak için yardımcı sınıf ──────────────────────────────────────
 
 class SettingsService {
   static const String _keyFirmaAdi = 'firma_adi';
   static const String _keyFirmaTel = 'firma_tel';
   static const String _keyFirmaAdres = 'firma_adres';
+  static const String _keyFirmaEmail = 'firma_email';
   static const String _keyLogoPath = 'logo_path';
 
   static Future<FirmaSettings> loadFirmaSettings() async {
@@ -832,6 +936,7 @@ class SettingsService {
       firmaAdi: prefs.getString(_keyFirmaAdi) ?? '',
       telefon: prefs.getString(_keyFirmaTel) ?? '',
       adres: prefs.getString(_keyFirmaAdres) ?? '',
+      email: prefs.getString(_keyFirmaEmail) ?? '',
       logoPath: prefs.getString(_keyLogoPath),
     );
   }
@@ -841,12 +946,14 @@ class FirmaSettings {
   final String firmaAdi;
   final String telefon;
   final String adres;
+  final String email;
   final String? logoPath;
 
   const FirmaSettings({
     required this.firmaAdi,
     required this.telefon,
     required this.adres,
+    required this.email,
     this.logoPath,
   });
 }

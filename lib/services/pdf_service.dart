@@ -762,12 +762,20 @@ class PdfService {
   }
 
   static String _formatPhone(String phone) {
-    // +905079446181 → +90 507 944 61 81
     final digits = phone.replaceAll(RegExp(r'[^\d+]'), '');
     if (digits.startsWith('+90') && digits.length == 13) {
-      return '${digits.substring(0, 3)} ${digits.substring(3, 6)} ${digits.substring(6, 9)} ${digits.substring(9, 11)} ${digits.substring(11)}';
+      return '+90 ${digits.substring(3, 6)} ${digits.substring(6, 9)} ${digits.substring(9, 11)} ${digits.substring(11)}';
     }
-    return phone; // tanımadığı format → olduğu gibi bırak
+    if (digits.startsWith('90') && digits.length == 12) {
+      return '+90 ${digits.substring(2, 5)} ${digits.substring(5, 8)} ${digits.substring(8, 10)} ${digits.substring(10)}';
+    }
+    if (digits.startsWith('0') && digits.length == 11) {
+      return '+90 ${digits.substring(1, 4)} ${digits.substring(4, 7)} ${digits.substring(7, 9)} ${digits.substring(9)}';
+    }
+    if (!digits.startsWith('+') && digits.length == 10) {
+      return '+90 ${digits.substring(0, 3)} ${digits.substring(3, 6)} ${digits.substring(6, 8)} ${digits.substring(8)}';
+    }
+    return phone;
   }
 }
 
