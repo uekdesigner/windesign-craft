@@ -162,9 +162,6 @@ exports.createProject = onCall(async (request) => {
         }
 
         const count = data.projectCount ?? 0;
-        if (count >= 2) {
-            throw new HttpsError("permission-denied", "project_limit");
-        }
 
         tx.update(ref, {
             projectCount: count + 1,
@@ -215,9 +212,6 @@ exports.generatePdf = onCall(async (request) => {
         }
 
         const pdfProjects = data.pdfProjects ?? [];
-        if (pdfProjects.includes(projectId)) {
-            throw new HttpsError("permission-denied", "pdf_already_used");
-        }
 
         tx.update(ref, {
             pdfProjects: FieldValue.arrayUnion(projectId),
