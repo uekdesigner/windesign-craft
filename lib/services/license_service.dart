@@ -55,6 +55,85 @@ class LicenseService {
       throw LicenseDeniedException(e.message ?? 'unknown');
     }
   }
+
+  /// Kurumsal anahtarı kullanır, organizasyonu oluşturur ve kullanıcıyı owner yapar.
+  /// Başarılıysa orgId, seats ve bitiş tarihi döner.
+  Future<Map<String, dynamic>> redeemCorporateKey({
+    required String key,
+    required String orgName,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('redeemCorporateKey');
+      final result = await callable.call({
+        'appId': appId,
+        'key': key,
+        'orgName': orgName,
+      });
+      return Map<String, dynamic>.from(result.data as Map);
+    } on FirebaseFunctionsException catch (e) {
+      throw LicenseDeniedException(e.message ?? 'unknown');
+    }
+  }
+
+  /// Sadece org owner çağırabilir. Koltuk doluysa hata fırlatır.
+  /// Hata kodları: 'seats_full' | 'not_org_owner' | 'already_invited'
+  Future<void> inviteEmployee({
+    required String orgId,
+    required String employeeEmail,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('inviteEmployee');
+      await callable.call({
+        'appId': appId,
+        'orgId': orgId,
+        'employeeEmail': employeeEmail,
+      });
+    } on FirebaseFunctionsException catch (e) {
+      throw LicenseDeniedException(e.message ?? 'unknown');
+    }
+  }
+
+  /// Kullanıcı kendi bekleyen davetini kabul eder.
+  /// Hata kodları: 'no_pending_invite' | 'seats_full'
+  Future<void> acceptInvite({required String orgId}) async {
+    try {
+      final callable = _functions.httpsCallable('acceptInvite');
+      await callable.call({'appId': appId, 'orgId': orgId});
+    } on FirebaseFunctionsException catch (e) {
+      throw LicenseDeniedException(e.message ?? 'unknown');
+    }
+  }
+
+  /// Sadece org owner çağırabilir. Çalışanı çıkarır, o kullanıcı anında kilitlenir.
+  Future<void> removeEmployee({
+    required String orgId,
+    required String employeeUid,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('removeEmployee');
+      await callable.call({
+        'appId': appId,
+        'orgId': orgId,
+        'employeeUid': employeeUid,
+      });
+    } on FirebaseFunctionsException catch (e) {
+      throw LicenseDeniedException(e.message ?? 'unknown');
+    }
+  }
+
+  /// Kullanıcının kendi e-postasına gelen bekleyen davetleri bulur.
+  /// Dönen liste: [{orgId, orgName, invitedAt}, ...]
+  Future<List<Map<String, dynamic>>> findMyInvites() async {
+    try {
+      final callable = _functions.httpsCallable('findMyInvites');
+      final result = await callable.call({'appId': appId});
+      final data = Map<String, dynamic>.from(result.data as Map);
+      final invites = (data['invites'] ?? const []) as List;
+      return invites.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } on FirebaseFunctionsException catch (e) {
+      throw LicenseDeniedException(e.message ?? 'unknown');
+    }
+  }
 }
 
 /// Lisans sınırı nedeniyle işlem reddedildiğinde fırlatılır.

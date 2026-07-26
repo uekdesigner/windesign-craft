@@ -197,34 +197,10 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             onPressed: _goToEditPage,
             tooltip: 'Proje Bilgilerini Düzenle',
           ),
-          Consumer(
-            builder: (context, ref, _) {
-              final licenseAsync = ref.watch(licenseProvider);
-              final isLicensed =
-                  licenseAsync.whenOrNull(data: (lic) => lic.isLicensed) ??
-                  false;
-
-              return IconButton(
-                icon: Icon(
-                  Icons.delete,
-                  color: isLicensed ? null : Colors.grey.shade400,
-                ),
-                onPressed: isLicensed
-                    ? _deleteProject
-                    : () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              'Proje silme yalnızca lisanslı kullanıcılara açıktır.',
-                            ),
-                            backgroundColor: Colors.orange.shade800,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                tooltip: 'Projeyi Sil',
-              );
-            },
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: _deleteProject,
+            tooltip: 'Projeyi Sil',
           ),
         ],
       ),

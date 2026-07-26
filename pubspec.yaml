@@ -2,7 +2,7 @@ name: windesign_craft
 description: "Pencere Çizim Sistemi"
 publish_to: 'none'
 
-version: 1.0.0+7
+version: 1.0.0+8
 
 environment:
   sdk: ^3.9.0

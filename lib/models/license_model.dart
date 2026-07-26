@@ -1,10 +1,12 @@
 class LicenseModel {
   final String status; // "trial" | "active" | "locked"
-  final String tier; // "trial" | "monthly" | "yearly"
+  final String tier; // "trial" | "monthly" | "yearly" | "corporate"
   final DateTime? trialEndsAt; // deneme bitiş tarihi
   final DateTime? licenseExpiresAt; // lisans bitiş tarihi
   final int projectCount;
   final List<String> pdfProjects;
+  final String? orgId; // kurumsal lisansa bağlıysa organizasyon id'si
+  final String? orgRole; // "owner" | "member" | null
 
   const LicenseModel({
     required this.status,
@@ -13,6 +15,8 @@ class LicenseModel {
     required this.licenseExpiresAt,
     required this.projectCount,
     required this.pdfProjects,
+    this.orgId,
+    this.orgRole,
   });
 
   factory LicenseModel.fromMap(Map<String, dynamic> map) {
@@ -31,8 +35,16 @@ class LicenseModel {
       pdfProjects: ((map['pdfProjects'] ?? const <dynamic>[]) as List)
           .map((e) => e.toString())
           .toList(),
+      orgId: map['orgId'] as String?,
+      orgRole: map['orgRole'] as String?,
     );
   }
+
+  /// Kurumsal lisansa bağlı mı?
+  bool get isCorporate => orgId != null;
+
+  /// Bu kullanıcı kendi kurumunun sahibi mi?
+  bool get isOrgOwner => orgRole == 'owner';
 
   /// Lisanslı mı?
   bool get isLicensed => status == 'active';

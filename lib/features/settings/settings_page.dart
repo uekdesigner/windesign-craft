@@ -11,6 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../../providers/license_provider.dart';
 import '../../screens/redeem_key_screen.dart';
+import '../../screens/redeem_corporate_key_screen.dart';
+import '../../screens/team_management_screen.dart';
+import '../../services/license_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/excel_export_service.dart';
 
@@ -594,7 +597,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           final IconData planIcon;
 
           if (lic.isLicensed) {
-            planText = lic.tier == 'yearly' ? 'Yıllık Lisans' : 'Aylık Lisans';
+            if (lic.tier == 'corporate') {
+              planText = lic.isOrgOwner
+                  ? 'Kurumsal Lisans (Sahip)'
+                  : 'Kurumsal Lisans';
+            } else {
+              planText = lic.tier == 'yearly'
+                  ? 'Yıllık Lisans'
+                  : 'Aylık Lisans';
+            }
             planColor = Colors.green.shade700;
             planIcon = Icons.check_circle;
           } else if (lic.isLocked) {
@@ -686,6 +697,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     ? 'Kilitli'
                     : 'Deneme',
               ),
+              if (lic.isOrgOwner && lic.orgId != null) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TeamManagementScreen(orgId: lic.orgId!),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.groups_outlined, size: 18),
+                    label: const Text('Ekibim'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (!lic.isLicensed) ...[
                 const Divider(height: 16),
                 _buildHakkindaRow(
@@ -722,6 +759,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                       ),
                     ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => const RedeemCorporateKeyScreen(),
+                        ),
+                      );
+                      if (result == true) ref.invalidate(licenseProvider);
+                    },
+                    icon: const Icon(Icons.business_center, size: 18),
+                    label: const Text('Kurumsal Lisansım Var'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.indigo.shade600,
+                      side: BorderSide(color: Colors.indigo.shade300),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                _PendingInvitesSection(
+                  onJoined: () => ref.invalidate(licenseProvider),
                 ),
               ],
             ],
@@ -956,4 +1020,106 @@ class FirmaSettings {
     required this.email,
     this.logoPath,
   });
+}
+
+// ── Bekleyen kurumsal davetler ─────────────────────────────────────────────
+
+class _PendingInvitesSection extends StatefulWidget {
+  final VoidCallback onJoined;
+
+  const _PendingInvitesSection({required this.onJoined});
+
+  @override
+  State<_PendingInvitesSection> createState() => _PendingInvitesSectionState();
+}
+
+class _PendingInvitesSectionState extends State<_PendingInvitesSection> {
+  late Future<List<Map<String, dynamic>>> _invitesFuture;
+  String? _joiningOrgId;
+
+  @override
+  void initState() {
+    super.initState();
+    _invitesFuture = LicenseService().findMyInvites();
+  }
+
+  Future<void> _join(String orgId) async {
+    setState(() => _joiningOrgId = orgId);
+    try {
+      await LicenseService().acceptInvite(orgId: orgId);
+      if (!mounted) return;
+      widget.onJoined();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ekibe katıldınız! 🎉')));
+    } on LicenseDeniedException catch (e) {
+      if (!mounted) return;
+      final message = switch (e.reason) {
+        'seats_full' => 'Koltuk sınırına ulaşıldı, firma sahibine ulaşın.',
+        'no_pending_invite' => 'Bu davet artık geçerli değil.',
+        _ => 'Katılınamadı: ${e.reason}',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _joiningOrgId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _invitesFuture,
+      builder: (context, snapshot) {
+        final invites = snapshot.data;
+        if (invites == null || invites.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            children: invites.map((invite) {
+              final orgId = invite['orgId'] as String;
+              final orgName = invite['orgName'] as String? ?? 'Bir firma';
+              final isJoining = _joiningOrgId == orgId;
+
+              return Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.indigo.shade100),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.mail_outline, color: Colors.indigo.shade600),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '$orgName sizi kurumsal lisansa davet etti.',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: isJoining ? null : () => _join(orgId),
+                      child: isJoining
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Katıl'),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
 }

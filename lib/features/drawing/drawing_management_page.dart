@@ -268,31 +268,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
   }
 
   Future<void> _startNewDrawing() async {
-    // 🔒 ÇİZİM LİMİTİ (sadece lisanssız kullanıcıda, max 3)
-    try {
-      final license = await LicenseService().fetchStatus();
-      if (!license.isLicensed) {
-        final current = ref.read(drawingProvider(widget.projectId)).length;
-        if (current >= 3) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Ücretsiz sürümde her projede en fazla 3 çizim oluşturabilirsiniz. Sınırsız çizim için lisans alın.',
-              ),
-              backgroundColor: Colors.orange.shade800,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-          return; // RoomDialog'u açma
-        }
-      }
-    } catch (_) {
-      // Lisans kontrolü başarısız olsa bile çizim açılmasını engelleme
-    }
-
-    // --- mevcut kodun, aynen ---
     final newDrawing = Drawing(
       id: 'DRAW_${DateTime.now().millisecondsSinceEpoch}',
       projectId: widget.projectId,
