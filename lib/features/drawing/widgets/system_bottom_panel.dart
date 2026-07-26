@@ -493,6 +493,9 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
     final result = MetretulCalculator.calculateForShape(shape);
     if (result.toplamMm <= 0) return const SizedBox.shrink();
 
+    final fireM = result.toplamM * 0.10;
+    final genelToplamM = result.toplamM + fireM;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
@@ -507,7 +510,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Metretül',
+              'Ortalama Metretül',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -515,37 +518,36 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
               ),
             ),
             const SizedBox(height: 3),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Kasa: ${result.sabitIskeletM.toStringAsFixed(2)} m',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF1F1F1F),
-                    ),
-                  ),
-                ),
-                if (result.kanatMm > 0)
-                  Expanded(
-                    child: Text(
-                      'Kanat: ${result.kanatM.toStringAsFixed(2)} m'
-                      ' (${result.kanatSayisi} adet)',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF1F1F1F),
-                      ),
-                    ),
-                  ),
-                Text(
-                  'Toplam: ${result.toplamM.toStringAsFixed(2)} m',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F1F1F),
-                  ),
-                ),
-              ],
+            Text(
+              'Kasa: ${result.sabitIskeletM.toStringAsFixed(2)} m',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF1F1F1F)),
+            ),
+            if (result.kanatMm > 0) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Kanat: ${result.kanatM.toStringAsFixed(2)} m'
+                ' (${result.kanatSayisi} adet)',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF1F1F1F)),
+              ),
+            ],
+            const SizedBox(height: 2),
+            Text(
+              'Toplam: ${result.toplamM.toStringAsFixed(2)} m',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF1F1F1F)),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Fire (%10): ${fireM.toStringAsFixed(2)} m',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF1F1F1F)),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'Genel Toplam: ${genelToplamM.toStringAsFixed(2)} m',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1F1F1F),
+              ),
             ),
           ],
         ),

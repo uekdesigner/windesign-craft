@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/shape_spec.dart';
+import 'calculator_dialog.dart';
 
 enum SectionAxis { horizontal, vertical }
 
@@ -75,12 +76,29 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
   late List<double> _allGaps;
   late List<TextEditingController> _gapControllers;
 
-  // Hangi gap kilitli (varsayılan: son gap)
+  // Hangi gap kilitli / otomatik hesaplanan (varsayılan: son gap)
   late int _lockedIndex;
+
+  // En son elle düzenlenen gap — kilit başka bir alana kayarken hedef seçimi için
+  int _lastEditedIndex = -1;
+
+  // Kilitli alana doğrudan yazıldığında, kilidin taşınacağı hedef alanı seçer
+  int _pickSwapTarget(int currentIdx) {
+    if (_lastEditedIndex != -1 &&
+        _lastEditedIndex != currentIdx &&
+        _lastEditedIndex < _allGaps.length) {
+      return _lastEditedIndex;
+    }
+    for (int i = 0; i < _allGaps.length; i++) {
+      if (i != currentIdx) return i;
+    }
+    return currentIdx;
+  }
 
   // Kısa çizgi state
   late Map<String, double> _shortFromFirst;
-  late Map<String, TextEditingController> _shortControllers;
+  late Map<String, TextEditingController> _shortControllers; // "İlk"taraf
+  late Map<String, TextEditingController> _shortLastControllers; // "Son" taraf
 
   // Hangi panel kartları açık
   final Set<int> _expandedSections = {};
@@ -174,12 +192,20 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
 
     _shortFromFirst = {};
     _shortControllers = {};
+    _shortLastControllers = {};
 
     for (final line in widget.shortLines) {
       final ff = _fromFirstOf(line);
       _shortFromFirst[line.id] = ff;
       _shortControllers[line.id] = TextEditingController(
         text: ff.toInt().toString(),
+      );
+      final sIdx = _sectionOf(line);
+      final (f, l) = _sectionBounds(sIdx);
+      final panelSize = (f - l).abs();
+      final fl = panelSize - ff;
+      _shortLastControllers[line.id] = TextEditingController(
+        text: fl.toInt().toString(),
       );
     }
 
@@ -198,54 +224,52 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
   void dispose() {
     for (final c in _gapControllers) c.dispose();
     for (final c in _shortControllers.values) c.dispose();
+    for (final c in _shortLastControllers.values) c.dispose();
     super.dispose();
   }
 
   // ─── Gap güncelleme ───────────────────────────────────────────────────────────
 
   void _onGapChanged(int idx, String raw) {
-    if (idx == _lockedIndex) return;
     final v = double.tryParse(raw);
     if (v == null || v < 50) return;
 
     setState(() {
-      _allGaps[idx] = v;
-      // Kilitli gap controller'ını güncelle
+      if (idx == _lockedIndex) {
+        // Kullanıcı otomatik hesaplanan kutuya doğrudan yazdı.
+        // Kilidi başka bir alana taşı; bu kutu artık elle girilen değeri tutar.
+        final newLockTarget = _pickSwapTarget(idx);
+        _allGaps[idx] = v;
+        _lockedIndex = newLockTarget;
+      } else {
+        _allGaps[idx] = v;
+      }
+      _lastEditedIndex = idx;
+
+      // Yeni kilitli (otomatik) alanın metnini güncelle
       final lockedVal = _lockedGapValue;
       _gapControllers[_lockedIndex].text = lockedVal < 0
           ? '!'
           : lockedVal.toInt().toString();
+
       // Kısa çizgi display güncelle
       for (final line in widget.shortLines) {
         final ff = _fromFirstOf(line);
         _shortFromFirst[line.id] = ff;
-        final ctrl = _shortControllers[line.id]!;
-        ctrl.text = ff.toInt().toString();
+        _shortControllers[line.id]!.text = ff.toInt().toString();
+
+        final sIdx = _sectionOf(line);
+        final (f, l) = _sectionBounds(sIdx);
+        final panelSize = (f - l).abs();
+        final fl = panelSize - ff;
+        _shortLastControllers[line.id]!.text = fl.toInt().toString();
       }
-    });
-  }
-
-  // Kilit değiştir
-  void _onLockTap(int newLockedIdx) {
-    if (newLockedIdx == _lockedIndex) return;
-    setState(() {
-      // Mevcut kilitli gap'in hesaplanan değerini dondur
-      final frozenVal = _lockedGapValue.clamp(50.0, double.infinity);
-      _allGaps[_lockedIndex] = frozenVal;
-      _gapControllers[_lockedIndex].text = frozenVal.toInt().toString();
-
-      _lockedIndex = newLockedIdx;
-
-      // Yeni kilitli gap controller'ını güncelle
-      final newLockedVal = _lockedGapValue;
-      _gapControllers[_lockedIndex].text = newLockedVal < 0
-          ? '!'
-          : newLockedVal.toInt().toString();
     });
   }
 
   // ─── Kısa çizgi güncelleme ────────────────────────────────────────────────────
 
+  // "İlk" (fromFirst) alanına yazıldığında çalışır
   void _onShortChanged(InternalElement line, String raw) {
     final newFromFirst = double.tryParse(raw);
     if (newFromFirst == null || newFromFirst < 0) return;
@@ -257,10 +281,42 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
 
     setState(() {
       _shortFromFirst[line.id] = newFromFirst;
+      // Karşı taraf (fromLast) kutusunu otomatik güncelle
+      final newFromLast = panelSize - newFromFirst;
+      _shortLastControllers[line.id]!.text = newFromLast.toInt().toString();
     });
 
     final newPos = _absolutePos(sIdx, newFromFirst);
     widget.onShortLineChanged?.call(line.id, newPos);
+  }
+
+  // "Son" (fromLast) alanına doğrudan yazıldığında çalışır — fromFirst'ü
+  // otomatik hesaplar, böylece iki kutu da her zaman yazılabilir kalır.
+  void _onShortLastChanged(InternalElement line, String raw) {
+    final newFromLast = double.tryParse(raw);
+    if (newFromLast == null || newFromLast < 0) return;
+
+    final sIdx = _sectionOf(line);
+    final (f, l) = _sectionBounds(sIdx);
+    final panelSize = (f - l).abs();
+    if (newFromLast >= panelSize) return;
+
+    final newFromFirst = panelSize - newFromLast;
+
+    setState(() {
+      _shortFromFirst[line.id] = newFromFirst;
+      // Karşı taraf (fromFirst) kutusunu otomatik güncelle
+      _shortControllers[line.id]!.text = newFromFirst.toInt().toString();
+    });
+
+    final newPos = _absolutePos(sIdx, newFromFirst);
+    widget.onShortLineChanged?.call(line.id, newPos);
+  }
+
+  // ─── Hesap makinesi ────────────────────────────────────────────────────────────
+
+  void _openCalculator() {
+    showDialog(context: context, builder: (_) => const CalculatorDialog());
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────────
@@ -345,6 +401,29 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
+          // 🆕 Hesap makinesi erişimi
+          Tooltip(
+            message: 'Hesap Makinesi',
+            child: InkWell(
+              onTap: _openCalculator,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                width: 30,
+                height: 30,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.grey.shade300, width: 1),
+                ),
+                child: Icon(
+                  Icons.calculate_rounded,
+                  size: 17,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
@@ -514,23 +593,8 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
                       _shortBadge(shortHere.length),
                       const SizedBox(width: 4),
                     ],
-                    // Gap input veya kilitli değer
+                    // Gap input alanı — her zaman düzenlenebilir
                     _buildGapField(sIdx, isLocked, isSelected, accent),
-                    const SizedBox(width: 4),
-                    // Kilit butonu
-                    GestureDetector(
-                      onTap: () => _onLockTap(sIdx),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          isLocked ? Icons.lock : Icons.lock_open,
-                          size: 16,
-                          color: isLocked
-                              ? Colors.grey.shade500
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                    ),
                     if (hasShort) ...[
                       const SizedBox(width: 2),
                       Icon(
@@ -566,35 +630,11 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
 
   Widget _buildGapField(int idx, bool isLocked, bool isSelected, Color accent) {
     final currentVal = _gapAt(idx);
-    final isError = isLocked && currentVal < 50;
+    final isError = currentVal < 50;
 
-    if (isLocked) {
-      // Kilitli: salt-okunur, otomatik hesaplanan değer
-      return Container(
-        width: 78,
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isError ? Colors.red.shade300 : Colors.grey.shade200,
-            width: 0.5,
-          ),
-        ),
-        alignment: Alignment.centerRight,
-        child: Text(
-          '${currentVal < 0 ? '!' : currentVal.toInt()} mm',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isError ? Colors.red.shade600 : Colors.grey.shade600,
-          ),
-        ),
-      );
-    }
-
-    // Düzenlenebilir
+    // Her iki kutu da her zaman yazılabilir. "Otomatik" (kilitli) kutu, mavimsi
+    // bir dolgu ile görsel olarak ayırt edilir; ama ona doğrudan da yazılabilir —
+    // yazıldığı anda kilit diğer kutuya kayar ve bu kutu manuel değeri tutar.
     return SizedBox(
       width: 78,
       child: TextField(
@@ -604,7 +644,11 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: isSelected ? accent : Colors.grey.shade900,
+          color: isSelected
+              ? accent
+              : isLocked
+              ? Colors.blueGrey.shade600
+              : Colors.grey.shade900,
         ),
         onTap: () {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -627,11 +671,15 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(
+              color: isLocked ? Colors.blue.shade100 : Colors.grey.shade300,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(
+              color: isLocked ? Colors.blue.shade100 : Colors.grey.shade300,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
@@ -643,10 +691,12 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
           ),
           isDense: true,
           filled: true,
-          fillColor: isSelected
+          fillColor: isLocked
+              ? Colors.blue.shade50.withOpacity(0.5)
+              : isSelected
               ? Color.alphaBlend(accent.withOpacity(0.06), Colors.white)
               : Colors.white,
-          errorText: _allGaps[idx] < 50 ? 'Min 50' : null,
+          errorText: isError ? 'Min 50' : null,
         ),
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
@@ -660,9 +710,6 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
 
   Widget _buildShortRow(InternalElement line, int sectionIdx) {
     final fromFirst = _shortFromFirst[line.id] ?? 0.0;
-    final (f, l) = _sectionBounds(sectionIdx);
-    final panelSize = (f - l).abs();
-    final fromLast = panelSize - fromFirst;
     final ctrl = _shortControllers[line.id]!;
 
     final firstLabel = _isH ? '↑ Üstten' : '← Soldan';
@@ -771,39 +818,58 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Container(
-                      height: 34,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: Colors.grey.shade200,
-                          width: 0.5,
+                    TextField(
+                      controller: _shortLastControllers[line.id]!,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.teal.shade800,
+                      ),
+                      onTap: () {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          final c = _shortLastControllers[line.id]!;
+                          c.selection = TextSelection(
+                            baseOffset: 0,
+                            extentOffset: c.text.length,
+                          );
+                        });
+                      },
+                      onChanged: (v) => _onShortLastChanged(line, v),
+                      decoration: InputDecoration(
+                        suffixText: 'mm',
+                        suffixStyle: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
                         ),
-                      ),
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${fromLast < 0 ? '!' : fromLast.toInt()} mm',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: fromLast < 0
-                                  ? Colors.red.shade600
-                                  : Colors.grey.shade600,
-                            ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 5,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(color: Colors.teal.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(color: Colors.teal.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(
+                            color: Colors.teal.shade500,
+                            width: 1.5,
                           ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.lock_outline,
-                            size: 11,
-                            color: Colors.grey.shade400,
-                          ),
-                        ],
+                        ),
+                        isDense: true,
+                        filled: true,
+                        fillColor: Colors.teal.shade50,
                       ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(5),
+                      ],
                     ),
                   ],
                 ),

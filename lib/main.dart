@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'services/error_handler.dart';
+import 'services/auth_service.dart';
 import 'app.dart';
 
 void main() {
@@ -15,10 +16,21 @@ void main() {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      // await GoogleSignIn.instance.initialize(
+      //   serverClientId:
+      //       '744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com',
+      // );
       await GoogleSignIn.instance.initialize(
-        serverClientId:
-            '744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com',
+        clientId: kIsWeb
+            ? '744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com'
+            : null,
+        serverClientId: kIsWeb
+            ? null
+            : '744072834944-qmf68120ffqccopptrd1mpmt77rj9hs5.apps.googleusercontent.com',
       );
+      //🚨 YENİ: giriş olaylarını dinlemeye başla
+      AuthService().listenGoogleAuthEvents();
+
       _setupGlobalErrorHandling();
       runApp(const ProviderScope(child: WinDesignApp()));
     },

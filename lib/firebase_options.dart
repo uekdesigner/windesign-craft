@@ -17,29 +17,17 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -54,9 +42,50 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyA73w5mZkDU2goAf7pbdqzZtO5S4JXEZfM',
-    appId: '1:744072834944:android:10d7d3aff0c68e57b19b65',
+    appId: '1:744072834944:android:ac0ae4631e82dbd3b19b65',
     messagingSenderId: '744072834944',
     projectId: 'windesign-craft-pro',
     storageBucket: 'windesign-craft-pro.firebasestorage.app',
+  );
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyC2aQpL-Y9YUP3UOS3bQgdrvaSTnK9OLcQ',
+    appId: '1:744072834944:web:5398fc1da8d6912bb19b65',
+    messagingSenderId: '744072834944',
+    projectId: 'windesign-craft-pro',
+    authDomain: 'windesign-craft-pro.firebaseapp.com',
+    storageBucket: 'windesign-craft-pro.firebasestorage.app',
+    measurementId: 'G-Z80B7D2MQL',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyBW6FwXTwqAO1KgF84yVooZgC-dbyy6bAg',
+    appId: '1:744072834944:ios:1734f269062a63b3b19b65',
+    messagingSenderId: '744072834944',
+    projectId: 'windesign-craft-pro',
+    storageBucket: 'windesign-craft-pro.firebasestorage.app',
+    androidClientId: '744072834944-0q5sa154vupsr1f02cg3qnoo6baqnb86.apps.googleusercontent.com',
+    iosClientId: '744072834944-9u37jmtas53h605vh5rdgvn0c3ltn7c0.apps.googleusercontent.com',
+    iosBundleId: 'com.example.opnwndw',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBW6FwXTwqAO1KgF84yVooZgC-dbyy6bAg',
+    appId: '1:744072834944:ios:1734f269062a63b3b19b65',
+    messagingSenderId: '744072834944',
+    projectId: 'windesign-craft-pro',
+    storageBucket: 'windesign-craft-pro.firebasestorage.app',
+    androidClientId: '744072834944-0q5sa154vupsr1f02cg3qnoo6baqnb86.apps.googleusercontent.com',
+    iosClientId: '744072834944-9u37jmtas53h605vh5rdgvn0c3ltn7c0.apps.googleusercontent.com',
+    iosBundleId: 'com.example.opnwndw',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyC2aQpL-Y9YUP3UOS3bQgdrvaSTnK9OLcQ',
+    appId: '1:744072834944:web:020d858ac891ca9db19b65',
+    messagingSenderId: '744072834944',
+    projectId: 'windesign-craft-pro',
+    authDomain: 'windesign-craft-pro.firebaseapp.com',
+    storageBucket: 'windesign-craft-pro.firebasestorage.app',
+    measurementId: 'G-WZ5Y72PS2V',
   );
 }

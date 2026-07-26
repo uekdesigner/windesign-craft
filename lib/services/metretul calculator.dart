@@ -102,11 +102,20 @@ class MetretulCalculator {
           sabit += (e.size.width + e.size.height) * 2;
           break;
         case InternalElementType.triangle:
+          // Yukarı açılım (üst menteşe / vasistas) metretüle katılmaz.
+          // Sol ve sağ açılım kanat olarak sayılır.
+          final direction = e.properties['direction'] as String?;
+          if (direction != 'up') {
+            kanat += (e.size.width + e.size.height) * 2;
+            kanatSayisi += 1;
+          }
+          break;
+        case InternalElementType.slideArrow:
+          // Sürme sistemi (sola/sağa) — kanat profili olarak sayılır.
           kanat += (e.size.width + e.size.height) * 2;
           kanatSayisi += 1;
           break;
         case InternalElementType.parallelLines:
-        case InternalElementType.slideArrow:
         case InternalElementType.dotGrid:
           break;
       }
@@ -119,15 +128,35 @@ class MetretulCalculator {
     );
   }
 
-  /// Poligon noktalarının çevresini (ardışık noktalar arası Öklid mesafesi
-  /// toplamı, kapalı poligon) hesaplar. Köşe kırpmaları (çapraz kesimler)
-  /// varsa bu, düz (width+height)*2'den farklı ve doğru sonucu verir.
+  /// Poligon noktalarını doğru sırayla (köşeler arası kenarlar) bağlayarak
+  /// çevreyi hesaplar.
+  /// getPolygonPoints() her köşe için 2 nokta üretir (kırpma noktaları).
+  /// Doğru traversal: TL_top → TR_top → TR_right → BR_right → BR_bottom
+  ///                  → BL_bottom → BL_left → TL_left → (kapalı)
+  /// Yani indeks sırası: 0, 2, 3, 4, 5, 6, 7, 1
   static double _polygonPerimeter(List<Offset> points) {
     if (points.length < 2) return 0;
+
+    final List<Offset> ordered;
+    if (points.length == 8) {
+      ordered = [
+        points[0], // TL — top edge
+        points[2], // TR — top edge
+        points[3], // TR — right edge
+        points[4], // BR — right edge
+        points[5], // BR — bottom edge
+        points[6], // BL — bottom edge
+        points[7], // BL — left edge
+        points[1], // TL — left edge
+      ];
+    } else {
+      ordered = points;
+    }
+
     double total = 0;
-    for (int i = 0; i < points.length; i++) {
-      final a = points[i];
-      final b = points[(i + 1) % points.length];
+    for (int i = 0; i < ordered.length; i++) {
+      final a = ordered[i];
+      final b = ordered[(i + 1) % ordered.length];
       total += (a - b).distance;
     }
     return total;

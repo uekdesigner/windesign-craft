@@ -58,7 +58,7 @@ class BackupService {
   /// Döner: (başarılı mı, mesaj)
   Future<(bool, String)> importBackup() async {
     // Dosya seç
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );

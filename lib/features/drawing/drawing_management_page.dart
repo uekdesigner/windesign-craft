@@ -3,7 +3,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/metretul calculator.dart';
 import 'providers/drawing_provider.dart';
 import '../../models/drawing.dart';
 import 'drawing_canvas_page.dart';
@@ -401,7 +400,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
     return Card(
       margin: EdgeInsets.fromLTRB(16, index == 0 ? 16 : 8, 16, 8),
       child: ListTile(
-        isThreeLine: true,
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -455,7 +453,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
             ),
             if (drawing.shapes.isNotEmpty) ...[
               const SizedBox(height: 4),
-              _buildMetretulRow(drawing),
               _buildPriceRow(drawing),
             ],
           ],
@@ -508,41 +505,6 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
         ),
         onTap: () => _navigateToDrawingCanvas(drawing),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
-  }
-
-  Widget _buildMetretulRow(Drawing drawing) {
-    // GEÇİCİ DEBUG — her zaman bir şey göster
-    final shapeCount = drawing.shapes.length;
-    if (shapeCount == 0) {
-      return Text(
-        '(shapes boş)',
-        style: TextStyle(fontSize: 10, color: Colors.red),
-      );
-    }
-
-    final result = MetretulCalculator.calculateForShapes(drawing.shapes);
-
-    // Sonucu debug et
-    debugPrint(
-      'Metretül: sabit=${result.sabitIskeletMm}, kanat=${result.kanatMm}, toplam=${result.toplamMm}',
-    );
-
-    if (result.toplamMm <= 0) {
-      return Text(
-        '(toplam=0)',
-        style: TextStyle(fontSize: 10, color: Colors.orange),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text(
-        'Metretül: ${result.sabitIskeletM.toStringAsFixed(2)}m kasa'
-        '${result.kanatMm > 0 ? ' + ${result.kanatM.toStringAsFixed(2)}m kanat' : ''}'
-        ' = ${result.toplamM.toStringAsFixed(2)}m',
-        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
       ),
     );
   }

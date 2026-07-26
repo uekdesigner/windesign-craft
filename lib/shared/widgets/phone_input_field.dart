@@ -20,6 +20,7 @@ class PhoneInputField extends StatefulWidget {
 
 class _PhoneInputFieldState extends State<PhoneInputField> {
   final TextEditingController _controller = TextEditingController();
+  final Geocoding _geocoding = Geocoding();
   MaskTextInputFormatter? _mask;
 
   String _countryCode = '+90';
@@ -99,10 +100,12 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
         timeLimit: const Duration(seconds: 3), // 🚨 3 saniye timeout
       );
 
-      final placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      ).timeout(const Duration(seconds: 2), onTimeout: () => []); // 🚨 Timeout
+      final placemarks = await _geocoding
+          .placemarkFromCoordinates(position.latitude, position.longitude)
+          .timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => [],
+          ); // 🚨 Timeout
 
       if (placemarks.isNotEmpty && mounted) {
         final countryCode = placemarks.first.isoCountryCode;

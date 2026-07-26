@@ -371,24 +371,27 @@ class HomePage extends StatelessWidget {
       child: Container(
         alignment: Alignment.center,
         margin: EdgeInsets.only(top: safeTop > 24 ? 8 : 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              width: logoSize,
-              height: logoSize,
-              child: Image.asset(
-                'assets/logo.png',
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                width: logoSize,
+                height: logoSize,
+                child: Image.asset(
+                  'assets/logo.png',
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
               ),
-            ),
-            SizedBox(height: usableHeight * 0.015),
-            _buildTitleFlexible(context, isTablet, usableHeight),
-          ],
+              SizedBox(height: usableHeight * 0.015),
+              _buildTitleFlexible(context, isTablet, usableHeight),
+            ],
+          ),
         ),
       ),
     );

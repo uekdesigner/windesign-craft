@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../shared/widgets/render_button.dart' as web;
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -44,7 +46,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 8),
               const Text('Başlamak için giriş yapın'),
               const SizedBox(height: 32),
-              if (_loading)
+
+              // 🚨 YENİ: Web'de Google'ın kendi butonu, diğerlerinde eski buton
+              if (kIsWeb)
+                web.renderButton()
+              else if (_loading)
                 const CircularProgressIndicator()
               else
                 ElevatedButton.icon(
@@ -52,6 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   label: const Text('Google ile giriş yap'),
                   onPressed: _signIn,
                 ),
+
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 Text(_error!, style: const TextStyle(color: Colors.red)),
