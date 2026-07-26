@@ -293,6 +293,46 @@ exports.redeemLicenseKey = onCall(async (request) => {
 });
 
 /**
+ * findMyInvites
+ * Kullanıcının kendi e-postasına gelen bekleyen davetleri bulur.
+ * Parametre: { appId: "windesign_craft" }
+ */
+exports.findMyInvites = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Giriş yapılmamış.");
+
+    const appId = request.data?.appId;
+    validateAppId(appId);
+
+    const email = (request.auth.token.email || "").toLowerCase();
+    if (!email) return { invites: [] };
+
+    const invitesSnap = await db
+        .collectionGroup("invites")
+        .where("email", "==", email)
+        .where("status", "==", "pending")
+        .get();
+
+    const invites = [];
+    for (const doc of invitesSnap.docs) {
+        const orgRef = doc.ref.parent.parent;
+        if (!orgRef) continue;
+        const orgSnap = await orgRef.get();
+        if (!orgSnap.exists) continue;
+        const orgData = orgSnap.data();
+        if (orgData.appId && orgData.appId !== appId) continue;
+
+        invites.push({
+            orgId: orgRef.id,
+            orgName: orgData.name || "Bilinmeyen Firma",
+            invitedAt: doc.data().invitedAt?.toMillis?.() ?? null,
+        });
+    }
+
+    return { invites };
+});
+
+/**
  * generateLicenseKey
  * Sadece admin kullanır.
  * Parametre: { appId: "windesign_craft", tier: "monthly" | "yearly" }
