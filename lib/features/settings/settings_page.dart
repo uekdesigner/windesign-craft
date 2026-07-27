@@ -16,6 +16,8 @@ import '../../screens/team_management_screen.dart';
 import '../../services/license_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/excel_export_service.dart';
+import '../../services/auth_service.dart';
+import '../../shared/widgets/pending_invites_section.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -350,9 +352,80 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             label: 'Telefon',
             value: phone,
           ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _confirmSignOut(context),
+              icon: Icon(
+                Icons.logout_rounded,
+                size: 18,
+                color: Colors.red.shade400,
+              ),
+              label: Text(
+                'Oturumu Kapat',
+                style: TextStyle(color: Colors.red.shade400),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.red.shade200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  // ── Çıkış Yap (Hesaptan Çıkış) ────────────────────────────────────────────
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Çıkış Yap'),
+          content: const Text(
+            'Hesabınızdan çıkış yapmak istediğinizden emin misiniz? '
+            'Tekrar giriş yapmanız gerekecek.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('VAZGEÇ'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('ÇIKIŞ YAP'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await AuthService().signOut();
+      // AuthGate, authStateProvider'ı dinlediği için oturum kapanınca
+      // otomatik olarak LoginScreen'e yönlendirir; manuel navigasyona gerek yok.
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Çıkış yapılırken bir hata oluştu: $e')),
+        );
+      }
+    }
   }
 
   // ── Firma Bilgileri ───────────────────────────────────────────────────────
@@ -784,7 +857,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     ),
                   ),
                 ),
-                _PendingInvitesSection(
+                PendingInvitesSection(
                   onJoined: () => ref.invalidate(licenseProvider),
                 ),
               ],
@@ -1024,102 +1097,6 @@ class FirmaSettings {
 
 // ── Bekleyen kurumsal davetler ─────────────────────────────────────────────
 
-class _PendingInvitesSection extends StatefulWidget {
-  final VoidCallback onJoined;
-
-  const _PendingInvitesSection({required this.onJoined});
-
-  @override
-  State<_PendingInvitesSection> createState() => _PendingInvitesSectionState();
-}
-
-class _PendingInvitesSectionState extends State<_PendingInvitesSection> {
-  late Future<List<Map<String, dynamic>>> _invitesFuture;
-  String? _joiningOrgId;
-
-  @override
-  void initState() {
-    super.initState();
-    _invitesFuture = LicenseService().findMyInvites();
-  }
-
-  Future<void> _join(String orgId) async {
-    setState(() => _joiningOrgId = orgId);
-    try {
-      await LicenseService().acceptInvite(orgId: orgId);
-      if (!mounted) return;
-      widget.onJoined();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ekibe katıldınız! 🎉')));
-    } on LicenseDeniedException catch (e) {
-      if (!mounted) return;
-      final message = switch (e.reason) {
-        'seats_full' => 'Koltuk sınırına ulaşıldı, firma sahibine ulaşın.',
-        'no_pending_invite' => 'Bu davet artık geçerli değil.',
-        _ => 'Katılınamadı: ${e.reason}',
-      };
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _joiningOrgId = null);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _invitesFuture,
-      builder: (context, snapshot) {
-        final invites = snapshot.data;
-        if (invites == null || invites.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Column(
-            children: invites.map((invite) {
-              final orgId = invite['orgId'] as String;
-              final orgName = invite['orgName'] as String? ?? 'Bir firma';
-              final isJoining = _joiningOrgId == orgId;
-
-              return Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.indigo.shade100),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.mail_outline, color: Colors.indigo.shade600),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '$orgName sizi kurumsal lisansa davet etti.',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: isJoining ? null : () => _join(orgId),
-                      child: isJoining
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Katıl'),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
-}
+// _PendingInvitesSection artık ../../shared/widgets/pending_invites_section.dart
+// içinde ortak (public) bir widget olarak tanımlı — hem burada hem
+// LockedScreen'de kullanılabiliyor.

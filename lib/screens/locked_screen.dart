@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/license_provider.dart';
 import '../services/auth_service.dart';
+import '../shared/widgets/pending_invites_section.dart';
 import 'redeem_key_screen.dart';
 
-class LockedScreen extends StatelessWidget {
+class LockedScreen extends ConsumerWidget {
   final int? daysOverdue; // süre kaç gün önce doldu (opsiyonel)
 
   const LockedScreen({super.key, this.daysOverdue});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -56,6 +59,13 @@ class LockedScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+                // 🆕 Bir firma tarafından kurumsal lisansa (tekrar) davet
+                // edilmiş olabilir — bu davet burada gösterilmezse, kilitli
+                // bir kullanıcının daveti kabul edebileceği başka hiçbir
+                // ekran yok.
+                PendingInvitesSection(
+                  onJoined: () => ref.invalidate(licenseProvider),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
