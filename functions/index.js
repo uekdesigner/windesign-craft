@@ -65,6 +65,8 @@ function licenseStatus(data) {
         licenseExpiresAt: licenseExpiresMs,
         projectCount: data.projectCount ?? 0,
         pdfProjects: data.pdfProjects ?? [],
+        orgId: data.orgId ?? null,
+        orgRole: data.orgRole ?? null,
     };
 }
 
@@ -86,6 +88,38 @@ exports.ensureLicense = onCall({ enforceAppCheck: false }, async (request) => {
 
     if (snap.exists) {
         const data = snap.data();
+
+        // Kurumsal lisans: organizasyon durumuna bak
+        if (data.orgId) {
+            const orgSnap = await db.collection("organizations").doc(data.orgId).get();
+
+            if (orgSnap.exists) {
+                const orgData = orgSnap.data();
+                const expiresMs = orgData.licenseExpiresAt?.toMillis
+                    ? orgData.licenseExpiresAt.toMillis()
+                    : 0;
+
+                if (Date.now() > expiresMs) {
+                    await ref.update({
+                        status: "locked",
+                        tier: "expired",
+                        updatedAt: FieldValue.serverTimestamp(),
+                    });
+                    return licenseStatus({ ...data, status: "locked", tier: "expired" });
+                }
+
+                return licenseStatus({ ...data, status: "active", tier: "corporate" });
+            } else {
+                await ref.update({
+                    status: "locked",
+                    tier: "expired",
+                    orgId: FieldValue.delete(),
+                    orgRole: FieldValue.delete(),
+                    updatedAt: FieldValue.serverTimestamp(),
+                });
+                return licenseStatus({ ...data, status: "locked", tier: "expired" });
+            }
+        }
 
         // Lisanslı ama süresi dolmuş mu?
         if (data.status === "active" && data.licenseExpiresAt) {
@@ -257,6 +291,10 @@ exports.redeemLicenseKey = onCall(async (request) => {
             throw new HttpsError("permission-denied", "wrong_app");
         }
 
+        if (keyData.tier === "corporate") {
+            throw new HttpsError("permission-denied", "use_redeemCorporateKey");
+        }
+
         if (keyData.used === true) {
             throw new HttpsError("permission-denied", "key_already_used");
         }
@@ -289,6 +327,289 @@ exports.redeemLicenseKey = onCall(async (request) => {
             tier: keyData.tier || "monthly",
             expiresAt: expiresAt.toMillis(),
         };
+    });
+});
+
+/**
+ * redeemCorporateKey
+ * Firma sahibi kurumsal anahtarı girer, organizations/{orgId} oluşturulur.
+ * Parametre: { appId: "windesign_craft", key: "WDC-XXXX-XXXX-XXXX", orgName: "Firma Adı" }
+ */
+exports.redeemCorporateKey = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Giriş yapılmamış.");
+
+    const appId = request.data?.appId;
+    validateAppId(appId);
+
+    const key = request.data?.key;
+    if (!key || typeof key !== "string" || key.trim().length === 0) {
+        throw new HttpsError("invalid-argument", "Lisans anahtarı gerekli.");
+    }
+
+    const orgName = request.data?.orgName;
+    if (!orgName || typeof orgName !== "string" || orgName.trim().length === 0) {
+        throw new HttpsError("invalid-argument", "Firma adı gerekli.");
+    }
+
+    const email = request.auth.token.email || null;
+    const trimmedKey = key.trim().toUpperCase();
+    const keyRef = db.collection("licenseKeys").doc(trimmedKey);
+    const licRef = licenseRef(uid, appId);
+    const orgRef = db.collection("organizations").doc();
+
+    return await db.runTransaction(async (tx) => {
+        const keySnap = await tx.get(keyRef);
+
+        if (!keySnap.exists) {
+            throw new HttpsError("not-found", "invalid_key");
+        }
+
+        const keyData = keySnap.data();
+
+        if (keyData.appId && keyData.appId !== appId) {
+            throw new HttpsError("permission-denied", "wrong_app");
+        }
+
+        if (keyData.tier !== "corporate") {
+            throw new HttpsError("permission-denied", "not_corporate_key");
+        }
+
+        if (keyData.used === true) {
+            throw new HttpsError("permission-denied", "key_already_used");
+        }
+
+        const now = Timestamp.now();
+        const days = keyData.durationDays || 365;
+        const expiresAt = Timestamp.fromMillis(
+            now.toMillis() + days * 24 * 60 * 60 * 1000
+        );
+        const seats = keyData.seats || 1;
+
+        tx.update(keyRef, {
+            used: true,
+            usedBy: uid,
+            usedAt: FieldValue.serverTimestamp(),
+        });
+
+        tx.set(orgRef, {
+            appId: appId,
+            ownerUid: uid,
+            name: orgName.trim(),
+            seats: seats,
+            seatsUsed: 1,
+            licenseExpiresAt: expiresAt,
+            members: {
+                [uid]: {
+                    email: email,
+                    addedAt: FieldValue.serverTimestamp(),
+                    role: "owner",
+                },
+            },
+            createdAt: FieldValue.serverTimestamp(),
+        });
+
+        tx.set(
+            licRef,
+            {
+                status: "active",
+                tier: "corporate",
+                orgId: orgRef.id,
+                orgRole: "owner",
+                updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+        );
+
+        return {
+            success: true,
+            orgId: orgRef.id,
+            seats: seats,
+            expiresAt: expiresAt.toMillis(),
+        };
+    });
+});
+
+/**
+ * inviteEmployee
+ * Sadece org owner'ı çağırabilir. Koltuk doluysa reddeder.
+ * Parametre: { appId, orgId, employeeEmail }
+ */
+exports.inviteEmployee = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Giriş yapılmamış.");
+
+    const appId = request.data?.appId;
+    validateAppId(appId);
+
+    const orgId = request.data?.orgId;
+    if (!orgId) throw new HttpsError("invalid-argument", "orgId gerekli.");
+
+    const employeeEmail = request.data?.employeeEmail;
+    if (!employeeEmail || typeof employeeEmail !== "string") {
+        throw new HttpsError("invalid-argument", "employeeEmail gerekli.");
+    }
+    const normalizedEmail = employeeEmail.trim().toLowerCase();
+
+    const orgRef = db.collection("organizations").doc(orgId);
+
+    return await db.runTransaction(async (tx) => {
+        const orgSnap = await tx.get(orgRef);
+        if (!orgSnap.exists) throw new HttpsError("not-found", "org_not_found");
+
+        const orgData = orgSnap.data();
+
+        if (orgData.ownerUid !== uid) {
+            throw new HttpsError("permission-denied", "not_org_owner");
+        }
+
+        const seatsUsed = orgData.seatsUsed ?? 0;
+        if (seatsUsed >= orgData.seats) {
+            throw new HttpsError("permission-denied", "seats_full");
+        }
+
+        const inviteRef = orgRef.collection("invites").doc(normalizedEmail);
+        const inviteSnap = await tx.get(inviteRef);
+        if (inviteSnap.exists && inviteSnap.data().status === "pending") {
+            throw new HttpsError("already-exists", "already_invited");
+        }
+
+        tx.set(inviteRef, {
+            email: normalizedEmail,
+            invitedAt: FieldValue.serverTimestamp(),
+            status: "pending",
+        });
+
+        return { success: true, email: normalizedEmail };
+    });
+});
+
+/**
+ * acceptInvite
+ * Kullanıcı kendi bekleyen davetini kabul eder (kendi e-postasına gelen davet).
+ * Parametre: { appId, orgId }
+ */
+exports.acceptInvite = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Giriş yapılmamış.");
+
+    const appId = request.data?.appId;
+    validateAppId(appId);
+
+    const orgId = request.data?.orgId;
+    if (!orgId) throw new HttpsError("invalid-argument", "orgId gerekli.");
+
+    const email = (request.auth.token.email || "").toLowerCase();
+    if (!email) throw new HttpsError("failed-precondition", "no_email");
+
+    const orgRef = db.collection("organizations").doc(orgId);
+    const inviteRef = orgRef.collection("invites").doc(email);
+    const licRef = licenseRef(uid, appId);
+
+    return await db.runTransaction(async (tx) => {
+        const inviteSnap = await tx.get(inviteRef);
+        if (!inviteSnap.exists || inviteSnap.data().status !== "pending") {
+            throw new HttpsError("not-found", "no_pending_invite");
+        }
+
+        const orgSnap = await tx.get(orgRef);
+        if (!orgSnap.exists) throw new HttpsError("not-found", "org_not_found");
+        const orgData = orgSnap.data();
+
+        const seatsUsed = orgData.seatsUsed ?? 0;
+        if (seatsUsed >= orgData.seats) {
+            throw new HttpsError("permission-denied", "seats_full");
+        }
+
+        tx.update(orgRef, {
+            seatsUsed: seatsUsed + 1,
+            [`members.${uid}`]: {
+                email: email,
+                addedAt: FieldValue.serverTimestamp(),
+                role: "member",
+            },
+        });
+
+        tx.update(inviteRef, {
+            status: "accepted",
+            acceptedBy: uid,
+            acceptedAt: FieldValue.serverTimestamp(),
+        });
+
+        tx.set(
+            licRef,
+            {
+                status: "active",
+                tier: "corporate",
+                orgId: orgId,
+                orgRole: "member",
+                updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+        );
+
+        return { success: true, orgId: orgId };
+    });
+});
+
+/**
+ * removeEmployee
+ * Sadece org owner'ı çağırabilir. Üyeyi çıkarır, o kullanıcı anında kilitlenir.
+ * Parametre: { appId, orgId, employeeUid }
+ */
+exports.removeEmployee = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Giriş yapılmamış.");
+
+    const appId = request.data?.appId;
+    validateAppId(appId);
+
+    const orgId = request.data?.orgId;
+    const employeeUid = request.data?.employeeUid;
+    if (!orgId || !employeeUid) {
+        throw new HttpsError("invalid-argument", "orgId ve employeeUid gerekli.");
+    }
+
+    const orgRef = db.collection("organizations").doc(orgId);
+    const employeeLicRef = licenseRef(employeeUid, appId);
+
+    return await db.runTransaction(async (tx) => {
+        const orgSnap = await tx.get(orgRef);
+        if (!orgSnap.exists) throw new HttpsError("not-found", "org_not_found");
+        const orgData = orgSnap.data();
+
+        if (orgData.ownerUid !== uid) {
+            throw new HttpsError("permission-denied", "not_org_owner");
+        }
+
+        if (employeeUid === orgData.ownerUid) {
+            throw new HttpsError("permission-denied", "cannot_remove_owner");
+        }
+
+        if (!orgData.members || !orgData.members[employeeUid]) {
+            throw new HttpsError("not-found", "member_not_found");
+        }
+
+        const seatsUsed = orgData.seatsUsed ?? 1;
+
+        tx.update(orgRef, {
+            seatsUsed: Math.max(0, seatsUsed - 1),
+            [`members.${employeeUid}`]: FieldValue.delete(),
+        });
+
+        tx.set(
+            employeeLicRef,
+            {
+                status: "locked",
+                tier: "expired",
+                orgId: FieldValue.delete(),
+                orgRole: FieldValue.delete(),
+                updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+        );
+
+        return { success: true };
     });
 });
 
@@ -335,7 +656,7 @@ exports.findMyInvites = onCall(async (request) => {
 /**
  * generateLicenseKey
  * Sadece admin kullanır.
- * Parametre: { appId: "windesign_craft", tier: "monthly" | "yearly" }
+ * Parametre: { appId: "windesign_craft", tier: "monthly" | "yearly" | "corporate", seats?: number }
  */
 exports.generateLicenseKey = onCall(async (request) => {
     const uid = request.auth?.uid;
@@ -350,8 +671,16 @@ exports.generateLicenseKey = onCall(async (request) => {
     validateAppId(appId);
 
     const tier = request.data?.tier;
-    if (!tier || !["monthly", "yearly"].includes(tier)) {
-        throw new HttpsError("invalid-argument", "tier 'monthly' veya 'yearly' olmalı.");
+    if (!tier || !["monthly", "yearly", "corporate"].includes(tier)) {
+        throw new HttpsError("invalid-argument", "tier 'monthly', 'yearly' veya 'corporate' olmalı.");
+    }
+
+    let seats = 1;
+    if (tier === "corporate") {
+        seats = request.data?.seats;
+        if (!Number.isInteger(seats) || seats < 1) {
+            throw new HttpsError("invalid-argument", "corporate tier için geçerli bir 'seats' sayısı gerekli.");
+        }
     }
 
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -362,19 +691,20 @@ exports.generateLicenseKey = onCall(async (request) => {
         ).join("");
     const key = `WDC-${seg()}-${seg()}-${seg()}`;
 
-    const durationDays = tier === "yearly" ? 365 : 30;
+    const durationDays = tier === "yearly" ? 365 : tier === "corporate" ? 365 : 30;
 
     await db.collection("licenseKeys").doc(key).set({
         appId: appId,
         tier: tier,
         durationDays: durationDays,
+        seats: seats,
         used: false,
         usedBy: null,
         usedAt: null,
         createdAt: FieldValue.serverTimestamp(),
     });
 
-    return { key: key, tier: tier, durationDays: durationDays, appId: appId };
+    return { key: key, tier: tier, durationDays: durationDays, seats: seats, appId: appId };
 });
 
 /**
