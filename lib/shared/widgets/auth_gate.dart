@@ -46,37 +46,34 @@ class _LicenseGate extends ConsumerStatefulWidget {
 
 class _LicenseGateState extends ConsumerState<_LicenseGate> {
   bool _animationDone = false;
-  bool _licenseReady = false;
-  Object? _licenseData; // LicenseModel türünde tut
 
   @override
   Widget build(BuildContext context) {
     final license = ref.watch(licenseProvider);
 
-    license.whenData((lic) {
-      if (!_licenseReady) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted)
-            setState(() {
-              _licenseReady = true;
-              _licenseData = lic;
-            });
-        });
-      }
-    });
-
-    // İkisi de hazırsa geçiş yap
-    if (_animationDone && _licenseReady) {
-      return _buildDestination(_licenseData);
+    // Splash animasyonu bitmeden hiçbir şey gösterme.
+    if (!_animationDone) {
+      return SplashScreen(
+        key: const ValueKey('license_splash'),
+        onComplete: () {
+          if (mounted) setState(() => _animationDone = true);
+        },
+      );
     }
 
-    // Henüz geçiş yok — splash oynasın
-    return SplashScreen(
-      key: const ValueKey('license_splash'),
-      onComplete: () {
-        if (mounted) setState(() => _animationDone = true);
-      },
-    );
+    if (license.hasError) {
+      return _ErrorScaffold(message: 'Lisans hatası: ${license.error}');
+    }
+
+    // Not: `valueOrNull` kullanıyoruz ki provider yeniden yüklenirken
+    // (invalidate sonrası kısa "loading" anında) ekran titremesin; en
+    // son bilinen veriyle devam eder, veri gelir gelmez otomatik günceller.
+    final lic = license.valueOrNull;
+    if (lic == null) {
+      return const _LoadingScaffold(message: 'Yükleniyor...');
+    }
+
+    return _buildDestination(lic);
   }
 
   Widget _buildDestination(dynamic lic) {

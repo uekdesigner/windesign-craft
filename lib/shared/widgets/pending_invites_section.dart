@@ -39,6 +39,10 @@ class _PendingInvitesSectionState extends State<PendingInvitesSection> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Ekibe katıldınız! 🎉')));
+      // Bu widget Ayarlar gibi Navigator.push ile açılmış bir sayfanın
+      // içindeyse, kök route'a dönmezsek kullanıcı ana ekrana geçtiğini
+      // görmez (LockedScreen'de zaten kök route olduğu için bu no-op'tur).
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } on LicenseDeniedException catch (e) {
       if (!mounted) return;
       final message = switch (e.reason) {

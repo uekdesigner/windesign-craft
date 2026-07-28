@@ -418,7 +418,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     try {
       await AuthService().signOut();
       // AuthGate, authStateProvider'ı dinlediği için oturum kapanınca
-      // otomatik olarak LoginScreen'e yönlendirir; manuel navigasyona gerek yok.
+      // LoginScreen'i göstermeye "karar verir" — ama bu Ayarlar sayfası
+      // Navigator.push ile üstte açıldığı için, kendisi kapatılmadan bu
+      // karar ekrana yansımaz. Bu yüzden kök route'a kadar geri dönüyoruz.
+      if (context.mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
