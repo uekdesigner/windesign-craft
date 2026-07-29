@@ -26,7 +26,6 @@ import 'widgets/system_bottom_panel.dart';
 import 'widgets/corner_side_panels.dart';
 import 'tools/side_panel_tool_handler.dart';
 import 'drawing_canvas_side_panel_editor.dart';
-import '../../shared/dialogs/calculator_dialog.dart';
 
 class DrawingCanvasPage extends ConsumerStatefulWidget {
   final String projectId;
@@ -1868,55 +1867,7 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
             }),
             onHeightChanged: (h) => setState(() => _systemPanelHeight = h),
           ),
-          _buildCalculatorHandle(shapes.length > 1, handleBottom), // ← YENİ
         ],
-      ),
-    );
-  }
-
-  Widget _buildCalculatorHandle(bool hasDrawingTableHandle, double bottom) {
-    const double handleSize = 44;
-    // Çizim tutamacı: left 8, genişlik 120 (+4 boşluk) → 132
-    // Sistem Türü tutamacı: left (132 veya 8), genişlik 140 (+4 boşluk)
-    final double left = hasDrawingTableHandle ? 276 : 152;
-
-    return Positioned(
-      left: left,
-      bottom: bottom,
-      child: GestureDetector(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (_) => const CalculatorDialog(),
-          );
-        },
-        child: Container(
-          width: handleSize,
-          height: handleSize,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(255, 110, 178, 247),
-                Color.fromARGB(255, 60, 130, 220),
-              ],
-            ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.calculate_rounded,
-            color: Colors.white,
-            size: 26,
-          ),
-        ),
       ),
     );
   }

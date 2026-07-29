@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'config/app_theme.dart';
 
-import 'shared/widgets/root_gate.dart';
+import 'shared/widgets/version_gate.dart';
 
 class WinDesignApp extends StatelessWidget {
   const WinDesignApp({super.key});
@@ -30,7 +30,7 @@ class WinDesignApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       themeMode: ThemeMode.light,
-      home: const RootGate(),
+      home: const VersionGate(),
     );
   }
 }
