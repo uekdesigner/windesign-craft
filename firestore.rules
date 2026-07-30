@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Sürüm kontrolü: en güncel/desteklenen build bilgisi.
+    // Gizli veri içermez; herkese açık okuma, yazma sadece Console'dan.
+    match /app_config/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Kullanıcı sadece KENDİ lisansını okuyabilir, kimse yazamaz
+    match /licenses/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+      match /apps/{appId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // Kurumsal lisans: owner ve member'lar kendi organizasyonlarını okuyabilir, yazma tamamen kapalı (sadece Cloud Functions)
+    match /organizations/{orgId} {
+      allow read: if request.auth != null &&
+        (resource.data.ownerUid == request.auth.uid ||
+         (resource.data.members != null && request.auth.uid in resource.data.members.keys()));
+      allow write: if false;
+    }
+
+    // Diğer her şey kapalı
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
