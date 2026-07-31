@@ -5,6 +5,7 @@ import '../../models/project.dart';
 import 'project_detail_page.dart';
 import '../../providers/license_provider.dart';
 import '../../models/license_model.dart';
+import '../../screens/purchase_screen.dart';
 
 class ProjectsListPage extends ConsumerStatefulWidget {
   const ProjectsListPage({super.key});
@@ -267,12 +268,11 @@ class _ProjectsListPageState extends ConsumerState<ProjectsListPage> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Lisans satın alma yakında eklenecek.'),
-                    ),
+                onTap: () async {
+                  final result = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(builder: (_) => const PurchaseScreen()),
                   );
+                  if (result == true) ref.invalidate(licenseProvider);
                 },
                 child: const Text(
                   'Lisans Al',
