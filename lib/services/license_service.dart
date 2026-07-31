@@ -134,6 +134,25 @@ class LicenseService {
       throw LicenseDeniedException(e.message ?? 'unknown');
     }
   }
+
+  /// Google Play satın almasını sunucuda doğrular ve lisansı aktive eder.
+  /// Başarılıysa { active, tier, expiresAt } döner.
+  Future<Map<String, dynamic>> verifyPurchase({
+    required String productId,
+    required String purchaseToken,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('verifyPurchase');
+      final result = await callable.call({
+        'appId': appId,
+        'productId': productId,
+        'purchaseToken': purchaseToken,
+      });
+      return Map<String, dynamic>.from(result.data as Map);
+    } on FirebaseFunctionsException catch (e) {
+      throw LicenseDeniedException(e.message ?? 'unknown');
+    }
+  }
 }
 
 /// Lisans sınırı nedeniyle işlem reddedildiğinde fırlatılır.

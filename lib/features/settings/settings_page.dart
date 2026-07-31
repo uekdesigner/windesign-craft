@@ -13,6 +13,7 @@ import '../../providers/license_provider.dart';
 import '../../screens/redeem_key_screen.dart';
 import '../../screens/redeem_corporate_key_screen.dart';
 import '../../screens/team_management_screen.dart';
+import '../../screens/purchase_screen.dart';
 import '../../services/license_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/excel_export_service.dart';
@@ -317,7 +318,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [_buildHakkindaSection(), const SizedBox(height: 32)],
+        children: [
+          _buildHakkindaSection(),
+          const SizedBox(height: 30),
+          Center(
+            child: Image.asset(
+              'assets/4K.png',
+              width: MediaQuery.of(context).size.width * 1.0,
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }
@@ -815,6 +826,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   '${lic.pdfProjects.length} proje için üretildi',
                 ),
                 const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => const PurchaseScreen(),
+                        ),
+                      );
+                      if (result == true) ref.invalidate(licenseProvider);
+                    },
+                    icon: const Icon(Icons.workspace_premium, size: 18),
+                    label: const Text('Abone Ol'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
