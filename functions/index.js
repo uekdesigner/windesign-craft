@@ -1,6 +1,8 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onMessagePublished } = require("firebase-functions/v2/pubsub");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { google } = require("googleapis");
 
 initializeApp();
 const db = getFirestore();
@@ -13,6 +15,29 @@ const VALID_APPS = ["windesign_craft"];
 
 // Admin e-postaları
 const ADMIN_EMAILS = ["muratalper81@gmail.com"];
+
+// Google Play Billing
+const ANDROID_PACKAGE_NAME = "com.uekdesigner.windesigncraft";
+const PLAY_BILLING_TOPIC = "play-billing-notifications";
+
+/**
+ * Android Publisher API istemcisi (Cloud Functions'ın çalıştığı servis
+ * hesabının kimliğiyle — Play Console'da bu hesaba izin verilmiş olmalı).
+ */
+async function getAndroidPublisher() {
+    const auth = new google.auth.GoogleAuth({
+        scopes: ["https://www.googleapis.com/auth/androidpublisher"],
+    });
+    const authClient = await auth.getClient();
+    return google.androidpublisher({ version: "v3", auth: authClient });
+}
+
+/**
+ * basePlanId'den tier ismini çıkarır.
+ */
+function tierFromBasePlanId(basePlanId) {
+    return basePlanId === "yillik" ? "yearly" : "monthly";
+}
 
 /**
  * Uygulama ID'sini doğrula
@@ -652,6 +677,164 @@ exports.findMyInvites = onCall(async (request) => {
 
     return { invites };
 });
+
+/**
+ * verifyPurchase
+ * Flutter tarafında satın alma tamamlanınca çağrılır. Google Play'e sorup
+ * gerçekliğini doğrular, lisansı aktive eder.
+ * Parametre: { appId, productId: "pro_lisans", purchaseToken }
+ */
+exports.verifyPurchase = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Giriş yapılmamış.");
+
+    const appId = request.data?.appId;
+    validateAppId(appId);
+
+    const purchaseToken = request.data?.purchaseToken;
+    const productId = request.data?.productId;
+
+    if (!purchaseToken || typeof purchaseToken !== "string") {
+        throw new HttpsError("invalid-argument", "purchaseToken gerekli.");
+    }
+    if (!productId || typeof productId !== "string") {
+        throw new HttpsError("invalid-argument", "productId gerekli.");
+    }
+
+    const publisher = await getAndroidPublisher();
+
+    let sub;
+    try {
+        const res = await publisher.purchases.subscriptionsv2.get({
+            packageName: ANDROID_PACKAGE_NAME,
+            token: purchaseToken,
+        });
+        sub = res.data;
+    } catch (err) {
+        console.error("verifyPurchase: Play API hatası:", err.message);
+        throw new HttpsError("internal", "purchase_verification_failed");
+    }
+
+    const lineItem = (sub.lineItems || [])[0];
+    if (!lineItem) {
+        throw new HttpsError("failed-precondition", "no_line_item");
+    }
+
+    const basePlanId = lineItem.offerDetails?.basePlanId || "";
+    const tier = tierFromBasePlanId(basePlanId);
+    const expiryMs = lineItem.expiryTime ? new Date(lineItem.expiryTime).getTime() : 0;
+    const autoRenewing = lineItem.autoRenewingPlan?.autoRenewEnabled ?? false;
+
+    const activeStates = ["SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"];
+    const isActive = activeStates.includes(sub.subscriptionState) && Date.now() < expiryMs;
+
+    // Satın almayı onaylıyoruz (acknowledge) — bu yapılmazsa Google 3 gün
+    // içinde otomatik iade eder. Zaten onaylıysa hata verir, sessizce yutuyoruz.
+    try {
+        await publisher.purchases.subscriptions.acknowledge({
+            packageName: ANDROID_PACKAGE_NAME,
+            subscriptionId: productId,
+            token: purchaseToken,
+            requestBody: {},
+        });
+    } catch (ackErr) {
+        console.log("verifyPurchase: acknowledge atlandı (muhtemelen zaten onaylı):", ackErr.message);
+    }
+
+    // purchaseToken -> uid eşleştirmesi (RTDN bildirimleri bunu kullanacak)
+    await db.collection("purchaseTokens").doc(purchaseToken).set({
+        uid: uid,
+        appId: appId,
+        productId: productId,
+        updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    await licenseRef(uid, appId).set(
+        {
+            status: isActive ? "active" : "locked",
+            tier: isActive ? tier : "expired",
+            licenseExpiresAt: Timestamp.fromMillis(expiryMs || Date.now()),
+            billingSource: "play_billing",
+            purchaseToken: purchaseToken,
+            autoRenewing: autoRenewing,
+            updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+    );
+
+    return {
+        success: true,
+        active: isActive,
+        tier: tier,
+        expiresAt: expiryMs,
+    };
+});
+
+/**
+ * onPlayBillingNotification
+ * Google Play'in Pub/Sub üzerinden gönderdiği gerçek zamanlı abonelik
+ * bildirimlerini (yenilendi, iptal edildi, süresi doldu vb.) işler.
+ */
+exports.onPlayBillingNotification = onMessagePublished(
+    PLAY_BILLING_TOPIC,
+    async (event) => {
+        const json = event.data.message.json;
+        const notif = json?.subscriptionNotification;
+
+        if (!notif) {
+            console.log("RTDN: subscriptionNotification yok, atlanıyor.", JSON.stringify(json));
+            return;
+        }
+
+        const purchaseToken = notif.purchaseToken;
+        const tokenSnap = await db.collection("purchaseTokens").doc(purchaseToken).get();
+
+        if (!tokenSnap.exists) {
+            console.log("RTDN: bilinmeyen purchaseToken, atlanıyor:", purchaseToken);
+            return;
+        }
+
+        const { uid, appId } = tokenSnap.data();
+
+        const publisher = await getAndroidPublisher();
+        let sub;
+        try {
+            const res = await publisher.purchases.subscriptionsv2.get({
+                packageName: ANDROID_PACKAGE_NAME,
+                token: purchaseToken,
+            });
+            sub = res.data;
+        } catch (err) {
+            console.error("RTDN: Play API sorgu hatası:", err.message);
+            return;
+        }
+
+        const lineItem = (sub.lineItems || [])[0];
+        const basePlanId = lineItem?.offerDetails?.basePlanId || "";
+        const tier = tierFromBasePlanId(basePlanId);
+        const expiryMs = lineItem?.expiryTime ? new Date(lineItem.expiryTime).getTime() : 0;
+        const autoRenewing = lineItem?.autoRenewingPlan?.autoRenewEnabled ?? false;
+
+        const activeStates = ["SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"];
+        const isActive = activeStates.includes(sub.subscriptionState) && Date.now() < expiryMs;
+
+        await licenseRef(uid, appId).set(
+            {
+                status: isActive ? "active" : "locked",
+                tier: isActive ? tier : "expired",
+                licenseExpiresAt: Timestamp.fromMillis(expiryMs || Date.now()),
+                billingSource: "play_billing",
+                autoRenewing: autoRenewing,
+                updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+        );
+
+        console.log(
+            `RTDN işlendi: uid=${uid}, notifType=${notif.notificationType}, state=${sub.subscriptionState}`
+        );
+    }
+);
 
 /**
  * generateLicenseKey
