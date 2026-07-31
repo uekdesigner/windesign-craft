@@ -321,9 +321,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHesapBilgileriSection(),
-          const SizedBox(height: 16),
           _buildLisansBilgileriSection(),
+          const SizedBox(height: 16),
+          _buildHesapBilgileriSection(),
           const SizedBox(height: 32),
         ],
       ),
@@ -376,13 +376,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             label: 'E-posta',
             value: email,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildLockedField(
             icon: Icons.phone_outlined,
             label: 'Telefon',
             value: phone,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -795,7 +795,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     ? 'Aylık'
                     : 'Deneme',
               ),
-              const Divider(height: 16),
+              const Divider(height: 12),
               _buildHakkindaRow(
                 Icons.assignment_outlined,
                 'Durum',
@@ -832,19 +832,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 ),
               ],
               if (!lic.isLicensed) ...[
-                const Divider(height: 16),
-                _buildHakkindaRow(
-                  Icons.folder_outlined,
-                  'Proje',
-                  '${lic.projectCount} / 2 kullanıldı',
-                ),
-                const Divider(height: 16),
-                _buildHakkindaRow(
-                  Icons.picture_as_pdf_outlined,
-                  'PDF',
-                  '${lic.pdfProjects.length} proje için üretildi',
-                ),
-                const SizedBox(height: 16),
+                const Divider(height: 12),
                 if (_showPlayPurchaseButton) ...[
                   SizedBox(
                     width: double.infinity,
@@ -962,54 +950,75 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () async {
-                          final uri = Uri(
-                            scheme: 'mailto',
-                            path: _ureticiFirmaMail,
-                            queryParameters: {
-                              'subject': 'İşletme Lisansı Talebi',
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 6,
+                        children: [
+                          InkWell(
+                            onTap: () async {
+                              final uri = Uri(
+                                scheme: 'mailto',
+                                path: _ureticiFirmaMail,
+                                queryParameters: {
+                                  'subject': 'İşletme Lisansı Talebi',
+                                },
+                              );
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
                             },
-                          );
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri);
-                          }
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.email_outlined,
-                              size: 15,
-                              color: Colors.indigo.shade700,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.email_outlined,
+                                  size: 15,
+                                  color: Colors.indigo.shade700,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _ureticiFirmaMail,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo.shade700,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _ureticiFirmaMail,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.indigo.shade700,
-                                decoration: TextDecoration.underline,
-                              ),
+                          ),
+                          InkWell(
+                            onTap: () async {
+                              final uri = Uri(
+                                scheme: 'tel',
+                                path: _ureticiFirmaTel.replaceAll(' ', ''),
+                              );
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  size: 15,
+                                  color: Colors.indigo.shade700,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _ureticiFirmaTel,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo.shade700,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.phone_outlined,
-                              size: 15,
-                              color: Colors.indigo.shade700,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _ureticiFirmaTel,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.indigo.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1060,7 +1069,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(8),
@@ -1068,27 +1077,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey.shade500),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Icon(icon, size: 16, color: Colors.grey.shade500),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
-          const Spacer(),
-          Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade400),
+          Expanded(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Icon(Icons.lock_outline, size: 14, color: Colors.grey.shade400),
         ],
       ),
     );
