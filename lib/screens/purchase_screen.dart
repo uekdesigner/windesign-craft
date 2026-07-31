@@ -109,7 +109,7 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
 
     final purchaseParam = GooglePlayPurchaseParam(
       productDetails: details,
-      offerToken: offer.offerToken,
+      offerToken: offer.offerIdToken,
     );
 
     try {
@@ -206,7 +206,7 @@ class _PurchaseScreenState extends ConsumerState<PurchaseScreen> {
 
   String _priceFor(String basePlanId) {
     final offer = _offers[basePlanId];
-    final phases = offer?.pricingPhases.pricingPhaseList ?? [];
+    final phases = offer?.pricingPhases ?? [];
     if (phases.isEmpty) return '-';
     return phases.first.formattedPrice;
   }
