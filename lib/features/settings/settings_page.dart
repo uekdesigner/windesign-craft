@@ -1,6 +1,7 @@
 // lib/features/settings/settings_page.dart
 
 import 'dart:io';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,6 +52,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   bool _isLoading = true;
   bool _isSaving = false;
 
+  // "Abone Ol" butonu sadece Android + Play Store'dan kurulmuş
+  // uygulamalarda gösterilir (manuel APK / diğer platformlarda
+  // Google Play Billing zaten çalışmaz, buton gösterip kafa karıştırmayalım).
+  bool _showPlayPurchaseButton = false;
+
   late TabController _tabController;
 
   @override
@@ -58,6 +64,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadSettings();
+    _checkPlayStoreInstall();
+  }
+
+  Future<void> _checkPlayStoreInstall() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final isPlayStore = info.installerStore == 'com.android.vending';
+      if (mounted) setState(() => _showPlayPurchaseButton = isPlayStore);
+    } catch (_) {
+      // Belirlenemezse gösterme — sessiz başarısızlık, kritik değil.
+    }
   }
 
   @override
@@ -826,30 +844,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   '${lic.pdfProjects.length} proje için üretildi',
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final result = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => const PurchaseScreen(),
+                if (_showPlayPurchaseButton) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => const PurchaseScreen(),
+                          ),
+                        );
+                        if (result == true) ref.invalidate(licenseProvider);
+                      },
+                      icon: const Icon(Icons.workspace_premium, size: 18),
+                      label: const Text('Abone Ol'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      );
-                      if (result == true) ref.invalidate(licenseProvider);
-                    },
-                    icon: const Icon(Icons.workspace_premium, size: 18),
-                    label: const Text('Abone Ol'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
