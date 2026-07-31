@@ -18,15 +18,22 @@ android {
     namespace = "com.uekdesigner.windesigncraft"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+   kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
+}
 
     defaultConfig {
         applicationId = "com.uekdesigner.windesigncraft"

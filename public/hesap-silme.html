@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hesap Silme Talebi — WinDesign Craft Pro</title>
+  <style>
+    :root {
+      --indigo: #3730a3;
+      --indigo-dark: #1e1b4b;
+      --ink: #1f2430;
+      --muted: #5b6270;
+      --line: #e4e6ef;
+      --bg: #f7f8fc;
+      --card: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    .top {
+      background: linear-gradient(135deg, var(--indigo-dark), var(--indigo));
+      color: white;
+      padding: 48px 24px 64px;
+    }
+
+    .top-inner {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 34px);
+      margin: 0 0 12px;
+      font-weight: 700;
+    }
+
+    .top p {
+      margin: 0;
+      opacity: 0.9;
+      max-width: 56ch;
+    }
+
+    main {
+      max-width: 720px;
+      margin: -36px auto 64px;
+      padding: 0 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(30, 27, 75, 0.06);
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 0 0 14px;
+      color: var(--indigo-dark);
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--ink);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    ul {
+      margin: 0 0 12px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      padding: 4px 0 4px 40px;
+      margin-bottom: 14px;
+    }
+
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 2px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--indigo);
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mail-box {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      background: #eef0fb;
+      border: 1px solid #d9dcf5;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 16px 0;
+    }
+
+    .mail-box a {
+      color: var(--indigo-dark);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 16px;
+    }
+
+    .mail-box a:hover {
+      text-decoration: underline;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 4px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      width: 40%;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 0 24px 40px;
+    }
+
+    a.link {
+      color: var(--indigo);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="top">
+    <div class="top-inner">
+      <p class="eyebrow">WinDesign Craft Pro</p>
+      <h1>Hesap Silme Talebi</h1>
+      <p>Hesabınızı ve hesabınıza bağlı verileri silmemizi istiyorsanız, aşağıdaki adımları izleyin. Talebiniz en geç 30
+        gün içinde işleme alınır.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="card">
+      <h2>Nasıl talep gönderirsiniz</h2>
+      <ol class="steps">
+        <li>Hesabınızda kayıtlı telefon numarasını veya e-posta adresini hazırlayın.</li>
+        <li>Aşağıdaki adrese, kayıtlı iletişim bilginizle birlikte bir silme talebi e-postası gönderin.</li>
+        <li>Kimliğinizi doğruladıktan sonra hesabınız ve ilişkili verileriniz kalıcı olarak silinir.</li>
+      </ol>
+
+      <div class="mail-box">
+        <span>✉️</span>
+        <a href="mailto:info@uekdesigner.com?subject=Hesap%20Silme%20Talebi">info@uekdesigner.com</a>
+        <span class="muted">— konu satırına "Hesap Silme Talebi" yazın</span>
+      </div>
+
+      <p class="muted">Sorularınız için telefon: +90 543 872 39 26</p>
+    </div>
+
+    <div class="card">
+      <h2>Silinen veriler</h2>
+      <p>Talebiniz onaylandığında aşağıdaki veriler kalıcı olarak silinir:</p>
+      <table>
+        <tr>
+          <th>Hesap bilgileri</th>
+          <td>Telefon numarası, e-posta, kullanıcı kimliği</td>
+        </tr>
+        <tr>
+          <th>Projeler ve çizimler</th>
+          <td>Hesabınıza kayıtlı tüm proje verileri</td>
+        </tr>
+        <tr>
+          <th>Lisans / abonelik kaydı</th>
+          <td>Lisans durumu ve satın alma geçmişi bağlantısı</td>
+        </tr>
+        <tr>
+          <th>Kurumsal üyelik</th>
+          <td>Bir organizasyona üyeyseniz, üyelik kaydınız</td>
+        </tr>
+      </table>
+      <p class="muted" style="margin-top:12px;">
+        Not: Google Play üzerinden satın aldığınız aboneliklerin faturalandırma kaydı, yasal
+        muhasebe yükümlülükleri gereği Google tarafından ayrıca saklanır; bu, Google Play'in
+        kendi politikalarına tabidir ve bizim tarafımızdan silinemez. Aboneliğinizi iptal etmek
+        için Play Store &gt; Ödemeler ve abonelikler bölümünü kullanabilirsiniz.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Kısmi silme</h2>
+      <p>Hesabınızı tamamen kapatmadan yalnızca belirli verilerin (örneğin belirli bir proje) silinmesini istiyorsanız,
+        aynı e-posta adresine hangi veriyi silmek istediğinizi belirterek yazabilirsiniz.</p>
+    </div>
+
+    <p style="text-align:center;">
+      <a class="link" href="https://uekdesigner.web.app/privacy.html">Gizlilik Politikamızı görüntüleyin →</a>
+    </p>
+  </main>
+
+  <footer>
+    © 2026 UEK DESIGNER — WinDesign Craft Pro
+  </footer>
+
+</body>
+
+</html>
