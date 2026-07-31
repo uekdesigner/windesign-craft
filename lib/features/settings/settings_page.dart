@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/license_provider.dart';
 import '../../screens/redeem_key_screen.dart';
 import '../../screens/redeem_corporate_key_screen.dart';
@@ -706,8 +707,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           if (lic.isLicensed) {
             if (lic.tier == 'corporate') {
               planText = lic.isOrgOwner
-                  ? 'Kurumsal Lisans (Sahip)'
-                  : 'Kurumsal Lisans';
+                  ? 'İşletme Lisansı (Sahip)'
+                  : 'İşletme Lisansı';
             } else {
               planText = lic.tier == 'yearly'
                   ? 'Yıllık Lisans'
@@ -906,7 +907,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                       if (result == true) ref.invalidate(licenseProvider);
                     },
                     icon: const Icon(Icons.business_center, size: 18),
-                    label: const Text('Kurumsal Lisansım Var'),
+                    label: const Text('İşletme Lisansım Var'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.indigo.shade600,
                       side: BorderSide(color: Colors.indigo.shade300),
@@ -915,6 +916,102 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
+                  ),
+                ),
+                // Kurumsal lisans Google Play'de satılmıyor (manuel satış) —
+                // henüz bir anahtarı olmayan potansiyel kurumsal müşterinin
+                // bu seçeneğin var olduğunu öğrenebileceği TEK yer burası.
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.groups_outlined,
+                            size: 18,
+                            color: Colors.amber.shade900,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Ekibiniz için işletme lisansı',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Birden fazla kullanıcıyla çalışıyorsanız işletme '
+                        'lisansı size özel fiyatlandırılır. Anahtar almak '
+                        'için bizimle iletişime geçin.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          final uri = Uri(
+                            scheme: 'mailto',
+                            path: _ureticiFirmaMail,
+                            queryParameters: {
+                              'subject': 'İşletme Lisansı Talebi',
+                            },
+                          );
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri);
+                          }
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.email_outlined,
+                              size: 15,
+                              color: Colors.indigo.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _ureticiFirmaMail,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.indigo.shade700,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Icon(
+                              Icons.phone_outlined,
+                              size: 15,
+                              color: Colors.indigo.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _ureticiFirmaTel,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.indigo.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 PendingInvitesSection(

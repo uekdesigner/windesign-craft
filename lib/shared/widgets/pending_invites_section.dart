@@ -90,7 +90,7 @@ class _PendingInvitesSectionState extends State<PendingInvitesSection> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '$orgName sizi kurumsal lisansa davet etti.',
+                        '$orgName sizi işletme lisansına davet etti.',
                         style: const TextStyle(fontSize: 13),
                       ),
                     ),

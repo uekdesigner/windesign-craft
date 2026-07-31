@@ -34,7 +34,7 @@ class _RedeemCorporateKeyScreenState
       return;
     }
     if (key.isEmpty) {
-      setState(() => _error = 'Kurumsal lisans anahtarını girin.');
+      setState(() => _error = 'İşletme lisansı anahtarını girin.');
       return;
     }
 
@@ -56,7 +56,7 @@ class _RedeemCorporateKeyScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Kurumsal lisans aktifleştirildi! $seats koltuk 🎉'),
+          content: Text('İşletme lisansı aktifleştirildi! $seats koltuk 🎉'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
         ),
@@ -75,7 +75,7 @@ class _RedeemCorporateKeyScreenState
             break;
           case 'not_corporate_key':
             _error =
-                'Bu anahtar kurumsal değil. Bireysel anahtarlar için "Lisans Anahtarı Gir" ekranını kullanın.';
+                'Bu anahtar işletme lisansı için değil. Bireysel anahtarlar için "Lisans Anahtarı Gir" ekranını kullanın.';
             break;
           default:
             _error = 'Anahtar kullanılamadı: ${e.reason}';
@@ -92,7 +92,7 @@ class _RedeemCorporateKeyScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kurumsal Lisans')),
+      appBar: AppBar(title: const Text('İşletme Lisansı')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
@@ -106,12 +106,12 @@ class _RedeemCorporateKeyScreenState
               ),
               const SizedBox(height: 20),
               const Text(
-                'Kurumsal Lisans Aktifleştir',
+                'İşletme Lisansı Aktifleştir',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                'Firma adınızı ve size verilen kurumsal lisans anahtarını girin.',
+                'Firma adınızı ve size verilen işletme lisansı anahtarını girin.',
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ),
@@ -168,7 +168,7 @@ class _RedeemCorporateKeyScreenState
                           ),
                         )
                       : const Text(
-                          'Kurumsal Lisansı Aktifleştir',
+                          'İşletme Lisansını Aktifleştir',
                           style: TextStyle(fontSize: 16),
                         ),
                 ),
