@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/license_provider.dart';
 import '../services/auth_service.dart';
 import '../shared/widgets/pending_invites_section.dart';
+import 'purchase_screen.dart';
 import 'redeem_key_screen.dart';
 
 class LockedScreen extends ConsumerWidget {
@@ -44,12 +45,12 @@ class LockedScreen extends ConsumerWidget {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const RedeemKeyScreen(),
+                          builder: (_) => const PurchaseScreen(),
                         ),
                       );
                     },
                     icon: const Icon(Icons.shopping_cart),
-                    label: const Text('Lisans Satın Al'),
+                    label: const Text('Google Play\'den Satın Al'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade700,
                       foregroundColor: Colors.white,
@@ -59,6 +60,17 @@ class LockedScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const RedeemKeyScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text('Lisans anahtarım var'),
                 ),
                 // 🆕 Bir firma tarafından kurumsal lisansa (tekrar) davet
                 // edilmiş olabilir — bu davet burada gösterilmezse, kilitli

@@ -846,7 +846,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                         if (result == true) ref.invalidate(licenseProvider);
                       },
                       icon: const Icon(Icons.workspace_premium, size: 18),
-                      label: const Text('Abone Ol'),
+                      label: const Text('Google Play\'den Satın Al'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.indigo.shade700,
                         foregroundColor: Colors.white,
