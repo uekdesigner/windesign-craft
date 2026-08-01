@@ -25,7 +25,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
 
   String _countryCode = '+90';
   String _countryShort = 'TR';
-  bool _isLoading = false; // 🚨 DEĞİŞTİ: true -> false (başta gösterme)
+  final bool _isLoading = false; // 🚨 DEĞİŞTİ: true -> false (başta gösterme)
   String _phoneNumber = '';
   bool _isDetectingLocation = false; // 🚨 YENİ: Konum arka planda
 
@@ -129,7 +129,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
           // Kullanıcıya bildir (opsiyonel)
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Ülke kodu ${_countryCode} olarak güncellendi'),
+              content: Text('Ülke kodu $_countryCode olarak güncellendi'),
               duration: const Duration(seconds: 2),
             ),
           );

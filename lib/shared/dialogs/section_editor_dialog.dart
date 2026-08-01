@@ -222,9 +222,15 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
 
   @override
   void dispose() {
-    for (final c in _gapControllers) c.dispose();
-    for (final c in _shortControllers.values) c.dispose();
-    for (final c in _shortLastControllers.values) c.dispose();
+    for (final c in _gapControllers) {
+      c.dispose();
+    }
+    for (final c in _shortControllers.values) {
+      c.dispose();
+    }
+    for (final c in _shortLastControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -524,12 +530,12 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
     final bgColor = isLocked
         ? Colors.grey.shade50
         : isSelected
-        ? Color.alphaBlend(accent.withOpacity(0.08), Colors.white)
+        ? Color.alphaBlend(accent.withValues(alpha: 0.08), Colors.white)
         : Colors.grey.shade50;
     final borderColor = isLocked
         ? Colors.grey.shade200
         : isSelected
-        ? accent.withOpacity(0.35)
+        ? accent.withValues(alpha: 0.35)
         : Colors.grey.shade200;
 
     final (f, l) = _sectionBounds(sIdx);
@@ -692,9 +698,9 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
           isDense: true,
           filled: true,
           fillColor: isLocked
-              ? Colors.blue.shade50.withOpacity(0.5)
+              ? Colors.blue.shade50.withValues(alpha: 0.5)
               : isSelected
-              ? Color.alphaBlend(accent.withOpacity(0.06), Colors.white)
+              ? Color.alphaBlend(accent.withValues(alpha: 0.06), Colors.white)
               : Colors.white,
           errorText: isError ? 'Min 50' : null,
         ),
@@ -889,14 +895,14 @@ class _SectionEditorDialogState extends State<SectionEditorDialog> {
         : -1;
     final isSelected = lineIdx == dialogLine;
     final lineColor = isSelected
-        ? accent.withOpacity(0.55)
+        ? accent.withValues(alpha: 0.55)
         : Colors.grey.shade300;
     final labelColor = isSelected ? accent : Colors.grey.shade500;
     final labelBg = isSelected
-        ? Color.alphaBlend(accent.withOpacity(0.1), Colors.white)
+        ? Color.alphaBlend(accent.withValues(alpha: 0.1), Colors.white)
         : Colors.grey.shade100;
     final labelBorder = isSelected
-        ? accent.withOpacity(0.35)
+        ? accent.withValues(alpha: 0.35)
         : Colors.grey.shade200;
 
     return Padding(

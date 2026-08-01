@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../models/shape_spec.dart';
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
 
 class DotGridTool {
   const DotGridTool._();

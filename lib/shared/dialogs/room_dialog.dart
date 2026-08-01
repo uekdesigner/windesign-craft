@@ -174,7 +174,7 @@ class _RoomDialogState extends State<RoomDialog> {
 
                   // Yön Seçimi
                   DropdownButtonFormField<String>(
-                    value: _selectedDirection,
+                    initialValue: _selectedDirection,
                     decoration: InputDecoration(
                       labelText: 'Yön *',
                       border: OutlineInputBorder(

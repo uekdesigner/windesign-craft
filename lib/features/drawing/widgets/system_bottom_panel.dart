@@ -1181,7 +1181,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                             if (!_isSaved) ...[
                               _buildMiniDropdownRow(
                                 dropdown: DropdownButtonFormField<WindowSystem>(
-                                  value: _selectedSystem,
+                                  initialValue: _selectedSystem,
                                   isExpanded: true,
                                   decoration: _miniInputDecoration(
                                     'Sistem Türü',
@@ -1219,7 +1219,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                               const SizedBox(height: 8),
                               _buildMiniDropdownRow(
                                 dropdown: DropdownButtonFormField<WindowSeries>(
-                                  value: _selectedSeries,
+                                  initialValue: _selectedSeries,
                                   isExpanded: true,
                                   decoration: _miniInputDecoration('Seri'),
                                   icon: const Icon(
@@ -1256,7 +1256,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                               const SizedBox(height: 8),
                               _buildMiniDropdownRow(
                                 dropdown: DropdownButtonFormField<String>(
-                                  value: _selectedColor,
+                                  initialValue: _selectedColor,
                                   isExpanded: true,
                                   decoration: _miniInputDecoration(
                                     'Profil Rengi',
@@ -1294,7 +1294,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                               const SizedBox(height: 8),
                               _buildMiniDropdownRow(
                                 dropdown: DropdownButtonFormField<int>(
-                                  value: _selectedGlassSystemId,
+                                  initialValue: _selectedGlassSystemId,
                                   isExpanded: true,
                                   decoration: _miniInputDecoration(
                                     'Cam Sistemi',
@@ -1338,7 +1338,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                               const SizedBox(height: 8),
                               _buildMiniDropdownRow(
                                 dropdown: DropdownButtonFormField<int>(
-                                  value: _selectedGlassToneId,
+                                  initialValue: _selectedGlassToneId,
                                   isExpanded: true,
                                   decoration: _miniInputDecoration('Cam Tonu'),
                                   icon: const Icon(
@@ -1410,8 +1410,9 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
                                   )),
                                 );
                                 final shape = controllerState.currentShape;
-                                if (shape == null)
+                                if (shape == null) {
                                   return const SizedBox.shrink();
+                                }
                                 return _buildMetretulInfo(shape);
                               },
                             ),
@@ -1686,7 +1687,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
     required VoidCallback? onDelete,
     required bool isDeleteActive,
   }) {
-    Widget _buildActionButton({
+    Widget buildActionButton({
       required IconData icon,
       required Color bgColor,
       required Color iconColor,
@@ -1715,7 +1716,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
       children: [
         Expanded(child: dropdown),
         const SizedBox(width: 4),
-        _buildActionButton(
+        buildActionButton(
           icon: Icons.add,
           bgColor: const Color.fromARGB(255, 232, 245, 253),
           iconColor: const Color.fromARGB(255, 39, 153, 247),
@@ -1723,7 +1724,7 @@ class _SystemBottomPanelState extends ConsumerState<SystemBottomPanel> {
           tooltip: 'Ekle',
         ),
         const SizedBox(width: 2),
-        _buildActionButton(
+        buildActionButton(
           icon: Icons.delete_outline,
           bgColor: isDeleteActive ? Colors.red.shade50 : Colors.grey.shade100,
           iconColor: isDeleteActive

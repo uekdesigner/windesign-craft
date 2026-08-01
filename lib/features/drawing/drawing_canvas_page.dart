@@ -2720,11 +2720,11 @@ class _DrawingCanvasPageState extends ConsumerState<DrawingCanvasPage>
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: color.withOpacity(0.4),
+                            color: color.withValues(alpha: 0.4),
                             width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          color: color.withOpacity(0.06),
+                          color: color.withValues(alpha: 0.06),
                         ),
                         child: Column(
                           children: [

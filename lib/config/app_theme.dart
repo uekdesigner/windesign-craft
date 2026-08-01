@@ -155,7 +155,7 @@ class AppTheme {
     // -------------------- Tooltip --------------------
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
-        color: const Color(0xFF2B2B2B).withOpacity(0.9),
+        color: const Color(0xFF2B2B2B).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(4),
       ),
       textStyle: const TextStyle(fontSize: 12, color: Colors.white),

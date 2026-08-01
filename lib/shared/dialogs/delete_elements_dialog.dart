@@ -422,7 +422,7 @@ class _DeleteElementsDialogState extends State<DeleteElementsDialog> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -592,7 +592,7 @@ class _DeleteElementsDialogState extends State<DeleteElementsDialog> {
                           ),
                           decoration: BoxDecoration(
                             color: (badgeColor ?? Colors.grey.shade500)
-                                .withOpacity(0.12),
+                                .withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(

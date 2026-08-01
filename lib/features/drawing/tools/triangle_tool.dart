@@ -1,8 +1,8 @@
-import 'dart:math' as math; // 🆕 EKLE
+// 🆕 EKLE
 import 'package:flutter/material.dart';
 import '../../../models/shape_spec.dart';
 import '../providers/tool_mode_provider.dart';
-import '../geometry/shape_crop_geometry.dart'; // 🆕 EKLE
+// 🆕 EKLE
 
 class TriangleTool {
   const TriangleTool._();

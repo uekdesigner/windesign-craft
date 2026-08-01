@@ -7,7 +7,6 @@ import '../../../models/drawing.dart';
 import 'drawing_provider.dart';
 import '../geometry/shape_crop_geometry.dart';
 import '../tools/line_calculator.dart';
-import 'drawing_controller_side_panel.dart';
 
 // State sınıfı - Tüm değerler final ve required
 class DrawingControllerState {

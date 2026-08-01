@@ -53,7 +53,7 @@ class ShapeDimensionPainter {
     final topPx = ctx.mainTopPx;
     final botPx = ctx.mainBottomPx;
 
-    if (lo.mainExt != null)
+    if (lo.mainExt != null) {
       _drawHDimLine(
         canvas,
         leftRef - lo.mainExt!,
@@ -61,9 +61,11 @@ class ShapeDimensionPainter {
         botPx,
         '${spec.baseHeight.toInt()}',
       );
+    }
 
-    if (lo.mainInnerH != null)
+    if (lo.mainInnerH != null) {
       _drawMainInnerHeights(canvas, spec, ctx, leftRef - lo.mainInnerH!);
+    }
 
     if (lo.leftExt != null && ctx.leftAttach != null) {
       final h = ctx.leftAttach!.height;
@@ -111,7 +113,7 @@ class ShapeDimensionPainter {
     }
 
     // 🆕 Ana şekil ölçüleri sağ tarafa taşınmışsa (sol panel var, sağ panel yok)
-    if (ro.mainExt != null)
+    if (ro.mainExt != null) {
       _drawHDimLine(
         canvas,
         rightRef + ro.mainExt!,
@@ -120,8 +122,9 @@ class ShapeDimensionPainter {
         '${spec.baseHeight.toInt()}',
         textOnLeft: false,
       );
+    }
 
-    if (ro.mainInnerH != null)
+    if (ro.mainInnerH != null) {
       _drawMainInnerHeights(
         canvas,
         spec,
@@ -129,6 +132,7 @@ class ShapeDimensionPainter {
         rightRef + ro.mainInnerH!,
         textOnLeft: false,
       );
+    }
   }
 
   static void _drawMainInnerHeights(
@@ -216,8 +220,9 @@ class ShapeDimensionPainter {
       '${spec.baseWidth.toInt()}',
     );
 
-    if (ctx.hasMainInnerV)
+    if (ctx.hasMainInnerV) {
       _drawMainInnerWidths(canvas, spec, ctx, botPx + _kBase);
+    }
 
     if (ctx.leftAttach != null) {
       final panelBotPx = topPx + ctx.leftAttach!.height * ctx.scale;
@@ -458,7 +463,7 @@ class ShapeDimensionPainter {
     final rightEdgeMm = spec.baseHeight - spec.topRightY - spec.bottomRightY;
     final bottomEdgeMm = spec.baseWidth - spec.bottomRightX - spec.bottomLeftX;
 
-    if ((spec.topLeftY > 0 || spec.bottomLeftY > 0) && leftEdgeMm > 0)
+    if ((spec.topLeftY > 0 || spec.bottomLeftY > 0) && leftEdgeMm > 0) {
       PainterHelpers.drawEdgeLabel(
         canvas,
         pointsPx[1],
@@ -466,7 +471,8 @@ class ShapeDimensionPainter {
         '${leftEdgeMm.toInt()}',
         true,
       );
-    if ((spec.topLeftX > 0 || spec.topRightX > 0) && topEdgeMm > 0)
+    }
+    if ((spec.topLeftX > 0 || spec.topRightX > 0) && topEdgeMm > 0) {
       PainterHelpers.drawEdgeLabel(
         canvas,
         pointsPx[0],
@@ -474,7 +480,8 @@ class ShapeDimensionPainter {
         '${topEdgeMm.toInt()}',
         false,
       );
-    if ((spec.topRightY > 0 || spec.bottomRightY > 0) && rightEdgeMm > 0)
+    }
+    if ((spec.topRightY > 0 || spec.bottomRightY > 0) && rightEdgeMm > 0) {
       PainterHelpers.drawEdgeLabel(
         canvas,
         pointsPx[3],
@@ -482,7 +489,8 @@ class ShapeDimensionPainter {
         '${rightEdgeMm.toInt()}',
         true,
       );
-    if ((spec.bottomLeftX > 0 || spec.bottomRightX > 0) && bottomEdgeMm > 0)
+    }
+    if ((spec.bottomLeftX > 0 || spec.bottomRightX > 0) && bottomEdgeMm > 0) {
       PainterHelpers.drawEdgeLabel(
         canvas,
         pointsPx[6],
@@ -490,6 +498,7 @@ class ShapeDimensionPainter {
         '${bottomEdgeMm.toInt()}',
         false,
       );
+    }
 
     _drawDiagonalIfNeeded(
       canvas,
@@ -538,14 +547,15 @@ class ShapeDimensionPainter {
     final midY = (topPx + bottomPx) / 2;
     final val = double.tryParse(label) ?? 0;
     if (textOnLeft) {
-      if (val > 99)
+      if (val > 99) {
         PainterHelpers.drawVerticalText(canvas, x - 7, midY, label);
-      else
+      } else {
         PainterHelpers.drawHorizontalText(canvas, x - 3, midY, label);
+      }
     } else {
-      if (val > 99)
+      if (val > 99) {
         PainterHelpers.drawVerticalText(canvas, x + 7, midY, label);
-      else {
+      } else {
         final tp = TextPainter(
           text: TextSpan(text: label, style: PainterHelpers.labelStyle()),
           textDirection: TextDirection.ltr,
@@ -682,9 +692,9 @@ class _MeasureContext {
   ) {
     SideAttachment? leftAttach, rightAttach;
     for (final a in attachments) {
-      if (a.side == 'left')
+      if (a.side == 'left') {
         leftAttach = a;
-      else if (a.side == 'right')
+      } else if (a.side == 'right')
         rightAttach = a;
     }
     final hasMainInnerH = spec.internalElements.any(
@@ -781,14 +791,16 @@ class _MeasureContext {
       }
       // Sağ panel var → hepsi solda (mevcut davranış)
       if (!hasMainInnerH && !hasLeftInnerH) return _LeftOffsets(leftExt: b);
-      if (hasMainInnerH && !hasLeftInnerH)
+      if (hasMainInnerH && !hasLeftInnerH) {
         return _LeftOffsets(mainInnerH: b, leftExt: b + s);
-      if (hasMainInnerH && hasLeftInnerH)
+      }
+      if (hasMainInnerH && hasLeftInnerH) {
         return _LeftOffsets(
           mainInnerH: b,
           leftInnerH: b + s,
           leftExt: b + 2 * s,
         );
+      }
       return _LeftOffsets(leftInnerH: b, leftExt: b + s);
     }
 
@@ -804,19 +816,22 @@ class _MeasureContext {
     }
     // Sağ panel var → ana ölçüler en yakın, panel ölçüleri en dışta
     // 3a: leftExt @15, mainExt @35
-    if (!hasMainInnerH && !hasLeftInnerH)
+    if (!hasMainInnerH && !hasLeftInnerH) {
       return _LeftOffsets(mainExt: b, leftExt: b + s);
+    }
     // 3b: mainInnerH @15, mainExt @35, leftExt @55
-    if (hasMainInnerH && !hasLeftInnerH)
+    if (hasMainInnerH && !hasLeftInnerH) {
       return _LeftOffsets(mainInnerH: b, mainExt: b + s, leftExt: b + 2 * s);
+    }
     // 3c: mainInnerH @15, mainExt @35, leftInnerH @55, leftExt @75
-    if (hasMainInnerH && hasLeftInnerH)
+    if (hasMainInnerH && hasLeftInnerH) {
       return _LeftOffsets(
         mainInnerH: b,
         mainExt: b + s,
         leftInnerH: b + 2 * s,
         leftExt: b + 3 * s,
       );
+    }
     // 3d: mainExt @15, leftInnerH @35, leftExt @55
     return _LeftOffsets(mainExt: b, leftInnerH: b + s, leftExt: b + 2 * s);
   }

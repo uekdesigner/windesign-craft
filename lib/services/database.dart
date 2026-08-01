@@ -353,8 +353,9 @@ class LocalDatabase {
         whereArgs: [drawing['project_id']],
         limit: 1,
       );
-      if (project.isEmpty)
+      if (project.isEmpty) {
         throw Exception('Proje bulunamadı: ${drawing['project_id']}');
+      }
 
       final result = await txn.insert(
         'drawings',

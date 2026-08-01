@@ -66,14 +66,14 @@ class _SplashScreenState extends State<SplashScreen>
               height: 240,
               child: AnimatedBuilder(
                 animation: _draw,
-                builder: (_, __) =>
+                builder: (_, _) =>
                     CustomPaint(painter: _LogoPainter(progress: _draw.value)),
               ),
             ),
             const SizedBox(height: 16),
             AnimatedBuilder(
               animation: _draw,
-              builder: (_, __) => _buildAnimatedTitle(_draw.value),
+              builder: (_, _) => _buildAnimatedTitle(_draw.value),
             ),
           ],
         ),
@@ -287,7 +287,7 @@ class _LogoPainter extends CustomPainter {
       text: TextSpan(
         text: s,
         style: TextStyle(
-          color: _yellow.withOpacity(opacity),
+          color: _yellow.withValues(alpha: opacity),
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,

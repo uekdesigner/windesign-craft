@@ -1177,7 +1177,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                 ],
               ),
             ),
-            if (trailing != null) trailing,
+            ?trailing,
           ],
         ),
       ),

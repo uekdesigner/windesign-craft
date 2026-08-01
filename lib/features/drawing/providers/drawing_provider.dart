@@ -178,9 +178,4 @@ class DrawingNotifier extends StateNotifier<List<Drawing>> {
   void clearCache() {
     _cachedDrawings = null;
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

@@ -172,10 +172,12 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
           inputFormatters: [UpperCaseTextFormatter()],
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           validator: (value) {
-            if (value == null || value.isEmpty)
+            if (value == null || value.isEmpty) {
               return 'Lütfen ad soyad giriniz';
-            if (value.split(' ').length < 2)
+            }
+            if (value.split(' ').length < 2) {
               return 'Lütfen ad ve soyad giriniz';
+            }
             return null;
           },
         ),

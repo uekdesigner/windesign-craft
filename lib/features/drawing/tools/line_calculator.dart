@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../models/shape_spec.dart';
 import '../geometry/shape_crop_geometry.dart';

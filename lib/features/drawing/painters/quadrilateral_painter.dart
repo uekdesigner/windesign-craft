@@ -110,7 +110,7 @@ class ShapePainter extends CustomPainter {
     _drawMainShape(canvas, mainPath);
 
     if (showInternalElements && !isThumbnail) {
-      if (previewHorizontalLineY != null)
+      if (previewHorizontalLineY != null) {
         ShapeElementPainter.drawPreviewHorizontalLine(
           canvas,
           spec,
@@ -119,7 +119,8 @@ class ShapePainter extends CustomPainter {
           previewHorizontalLineY!,
           _mmToPx,
         );
-      if (previewVerticalLineX != null)
+      }
+      if (previewVerticalLineX != null) {
         ShapeElementPainter.drawPreviewVerticalLine(
           canvas,
           spec,
@@ -128,6 +129,7 @@ class ShapePainter extends CustomPainter {
           previewVerticalLineX!,
           _mmToPx,
         );
+      }
       ShapeElementPainter.drawInternalElements(
         canvas,
         spec,
@@ -139,7 +141,7 @@ class ShapePainter extends CustomPainter {
       );
     }
 
-    if (previewShortHorizontalLineY != null)
+    if (previewShortHorizontalLineY != null) {
       ShapeElementPainter.drawPreviewShortHorizontalLine(
         canvas,
         spec,
@@ -148,7 +150,8 @@ class ShapePainter extends CustomPainter {
         previewShortHorizontalLineY!,
         _mmToPx,
       );
-    if (previewShortVerticalLineX != null)
+    }
+    if (previewShortVerticalLineX != null) {
       ShapeElementPainter.drawPreviewShortVerticalLine(
         canvas,
         spec,
@@ -157,6 +160,7 @@ class ShapePainter extends CustomPainter {
         previewShortVerticalLineX!,
         _mmToPx,
       );
+    }
 
     // ── YAN PANEL DİKDÖRTGENLERİ ──
     _drawSidePanelRects(canvas, pointsPx, scale, offset);

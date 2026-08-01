@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../../../models/shape_spec.dart';
-import '../providers/tool_mode_provider.dart';
 
 /// Yan panel (SideAttachment) üzerine araç ekleme mantığı.
 /// Ana şekil koduna hiç dokunmaz.

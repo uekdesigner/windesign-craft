@@ -292,7 +292,7 @@ class ShapeElementPainter {
         textPainter.width + 6,
         textPainter.height + 6,
       ),
-      Paint()..color = Colors.white.withOpacity(0.85),
+      Paint()..color = Colors.white.withValues(alpha: 0.85),
     );
     textPainter.paint(canvas, iconPos);
   }
@@ -559,15 +559,18 @@ class ShapeElementPainter {
         final yLeft = left + b;
         if (yLeft >= top && yLeft <= bottom) points.add(Offset(left, yLeft));
         final yRight = right + b;
-        if (yRight >= top && yRight <= bottom)
+        if (yRight >= top && yRight <= bottom) {
           points.add(Offset(right, yRight));
+        }
         final xTop = top - b;
         if (xTop >= left && xTop <= right) points.add(Offset(xTop, top));
         final xBottom = bottom - b;
-        if (xBottom >= left && xBottom <= right)
+        if (xBottom >= left && xBottom <= right) {
           points.add(Offset(xBottom, bottom));
-        if (points.length >= 2)
+        }
+        if (points.length >= 2) {
           canvas.drawLine(points.first, points.last, paint);
+        }
       }
     } else {
       // \ yönü: y = -x + b
@@ -576,15 +579,18 @@ class ShapeElementPainter {
         final yLeft = -left + b;
         if (yLeft >= top && yLeft <= bottom) points.add(Offset(left, yLeft));
         final yRight = -right + b;
-        if (yRight >= top && yRight <= bottom)
+        if (yRight >= top && yRight <= bottom) {
           points.add(Offset(right, yRight));
+        }
         final xTop = b - top;
         if (xTop >= left && xTop <= right) points.add(Offset(xTop, top));
         final xBottom = b - bottom;
-        if (xBottom >= left && xBottom <= right)
+        if (xBottom >= left && xBottom <= right) {
           points.add(Offset(xBottom, bottom));
-        if (points.length >= 2)
+        }
+        if (points.length >= 2) {
           canvas.drawLine(points.first, points.last, paint);
+        }
       }
     }
   }

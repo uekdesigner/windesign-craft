@@ -221,7 +221,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         actions: [
           ListenableBuilder(
             listenable: _tabController,
-            builder: (_, __) {
+            builder: (_, _) {
               if (_tabController.index != 0) return const SizedBox.shrink();
               return TextButton.icon(
                 onPressed: _isSaving ? null : _saveSettings,
@@ -695,7 +695,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        error: (_, __) => const Text(
+        error: (_, _) => const Text(
           'Lisans bilgisi yüklenemedi.',
           style: TextStyle(color: Colors.red),
         ),
@@ -747,9 +747,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   horizontal: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: planColor.withOpacity(0.08),
+                  color: planColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: planColor.withOpacity(0.3)),
+                  border: Border.all(color: planColor.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -775,7 +775,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                                   : countdownText,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: planColor.withOpacity(0.8),
+                                color: planColor.withValues(alpha: 0.8),
                               ),
                             ),
                           ],

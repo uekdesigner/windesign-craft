@@ -88,9 +88,9 @@ class _ProjectsListPageState extends ConsumerState<ProjectsListPage> {
       if (firstLetter == 'I') firstLetter = 'İ';
 
       if (!_alphabet.contains(firstLetter)) {
-        if (firstLetter == 'Ç')
+        if (firstLetter == 'Ç') {
           firstLetter = 'C';
-        else if (firstLetter == 'Ğ')
+        } else if (firstLetter == 'Ğ')
           firstLetter = 'G';
         else if (firstLetter == 'İ')
           firstLetter = 'I';
@@ -233,7 +233,7 @@ class _ProjectsListPageState extends ConsumerState<ProjectsListPage> {
     final licenseAsync = ref.watch(licenseProvider);
     return licenseAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (lic) {
         // Lisanslıysa banner gösterme
         if (lic.isLicensed) return const SizedBox.shrink();

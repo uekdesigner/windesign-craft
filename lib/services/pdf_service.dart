@@ -225,10 +225,12 @@ class PdfService {
         '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
 
     final locationParts = <String>[];
-    if (drawing.location?.isNotEmpty == true)
+    if (drawing.location?.isNotEmpty == true) {
       locationParts.add(drawing.location!);
-    if (drawing.direction?.isNotEmpty == true)
+    }
+    if (drawing.direction?.isNotEmpty == true) {
       locationParts.add(drawing.direction!);
+    }
     final locationTitle = locationParts.isEmpty
         ? drawing.name
         : locationParts.join(' · ');
@@ -241,20 +243,26 @@ class PdfService {
     final satirIki = <String>[];
     final satirUc = <String>[];
 
-    if (shape.systemName?.isNotEmpty == true)
+    if (shape.systemName?.isNotEmpty == true) {
       satirBir.add('Sistem: ${shape.systemName!}');
-    if (shape.seriesName?.isNotEmpty == true)
+    }
+    if (shape.seriesName?.isNotEmpty == true) {
       satirBir.add('Seri: ${shape.seriesName!}');
-    if (shape.profileColor?.isNotEmpty == true)
+    }
+    if (shape.profileColor?.isNotEmpty == true) {
       satirBir.add('Renk: ${_capitalize(shape.profileColor!)}');
+    }
 
-    if (shape.glassSystem?.isNotEmpty == true)
+    if (shape.glassSystem?.isNotEmpty == true) {
       satirIki.add('Cam Sistemi: ${shape.glassSystem!}');
-    if (shape.glassTone?.isNotEmpty == true)
+    }
+    if (shape.glassTone?.isNotEmpty == true) {
       satirIki.add('Cam Tonu: ${shape.glassTone!}');
+    }
 
-    if (shape.accessories.isNotEmpty)
+    if (shape.accessories.isNotEmpty) {
       satirUc.add('Aksesuar: ${shape.accessories.join(', ')}');
+    }
 
     final hasTeknik =
         satirBir.isNotEmpty ||

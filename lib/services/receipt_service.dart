@@ -1,7 +1,6 @@
 // lib/services/receipt_service.dart
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';

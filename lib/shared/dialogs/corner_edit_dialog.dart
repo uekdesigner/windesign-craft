@@ -7,10 +7,10 @@ class CornerEditDialog extends StatefulWidget {
   final int cornerIndex; // 0:SolÜst, 1:SağÜst, 2:SağAlt, 3:SolAlt
 
   const CornerEditDialog({
-    Key? key,
+    super.key,
     required this.shape,
     required this.cornerIndex,
-  }) : super(key: key);
+  });
 
   @override
   State<CornerEditDialog> createState() => _CornerEditDialogState();

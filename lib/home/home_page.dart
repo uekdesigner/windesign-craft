@@ -489,8 +489,8 @@ class HomePage extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: isPrimary
-                ? Color(0xFF1565C0).withOpacity(0.25)
-                : Colors.grey.withOpacity(0.2),
+                ? Color(0xFF1565C0).withValues(alpha: 0.25)
+                : Colors.grey.withValues(alpha: 0.2),
             blurRadius: 6,
             offset: Offset(0, 3),
           ),
@@ -559,8 +559,8 @@ class HomePage extends StatelessWidget {
     bool isExit = false,
   }) {
     final Color bgColor = isExit
-        ? Colors.red[50]!.withOpacity(0.7)
-        : Colors.grey[100]!.withOpacity(0.8);
+        ? Colors.red[50]!.withValues(alpha: 0.7)
+        : Colors.grey[100]!.withValues(alpha: 0.8);
     final Color iconColor = isExit ? Colors.red[600]! : Colors.grey[700]!;
     final Color borderColor = isExit ? Colors.red[200]! : Colors.grey[300]!;
 
@@ -580,7 +580,7 @@ class HomePage extends StatelessWidget {
               border: Border.all(color: borderColor, width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 3,
                   offset: Offset(0, 2),
                 ),
