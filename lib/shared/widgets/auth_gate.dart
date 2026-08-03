@@ -20,7 +20,10 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       // Giriş durumu belli değil → kısa yüklenme
       loading: () => const _LoadingScaffold(message: 'Yükleniyor...'),
-      error: (e, _) => _ErrorScaffold(message: 'Giriş hatası: $e'),
+      error: (e, _) => _ErrorScaffold(
+        message: 'Giriş hatası: $e',
+        onRetry: () => ref.invalidate(authStateProvider),
+      ),
       data: (user) {
         if (user == null) {
           return const LoginScreen();
@@ -62,7 +65,13 @@ class _LicenseGateState extends ConsumerState<_LicenseGate> {
     }
 
     if (license.hasError) {
-      return _ErrorScaffold(message: 'Lisans hatası: ${license.error}');
+      final isOffline = license.error is LicenseUnreachableException;
+      return _ErrorScaffold(
+        message: isOffline
+            ? 'İnternet bağlantısı kurulamadı ve geçerli bir lisans kaydı bulunamadı.\nLütfen bağlantınızı kontrol edip tekrar deneyin.'
+            : 'Lisans hatası: ${license.error}',
+        onRetry: () => ref.invalidate(licenseProvider),
+      );
     }
 
     // Not: `valueOrNull` kullanıyoruz ki provider yeniden yüklenirken
@@ -110,7 +119,7 @@ class _LoadingScaffold extends StatelessWidget {
 class _ErrorScaffold extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
-  const _ErrorScaffold({required this.message}) : onRetry = null;
+  const _ErrorScaffold({required this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {

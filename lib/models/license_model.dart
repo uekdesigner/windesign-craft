@@ -72,4 +72,18 @@ class LicenseModel {
     if (status == 'active') return licenseExpiresAt;
     return null;
   }
+
+  /// Lokal cache'e (SharedPreferences) yazmak için — fromMap'in tersi.
+  Map<String, dynamic> toMap() {
+    return {
+      'status': status,
+      'tier': tier,
+      'trialEndsAt': trialEndsAt?.millisecondsSinceEpoch,
+      'licenseExpiresAt': licenseExpiresAt?.millisecondsSinceEpoch,
+      'projectCount': projectCount,
+      'pdfProjects': pdfProjects,
+      'orgId': orgId,
+      'orgRole': orgRole,
+    };
+  }
 }

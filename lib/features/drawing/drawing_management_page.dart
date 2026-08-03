@@ -775,6 +775,20 @@ class _DrawingManagementPageState extends ConsumerState<DrawingManagementPage> {
         return;
       }
 
+      if (e is LicenseOfflineException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'PDF oluşturmak için internet bağlantısı gerekiyor.',
+            ),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+
       // Lisans dışı gerçek hatalar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

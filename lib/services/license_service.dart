@@ -1,6 +1,7 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import '../models/license_model.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'license_cache_service.dart';
 
 class LicenseService {
   final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
@@ -23,23 +24,39 @@ class LicenseService {
   /// Yeni proje oluşturmadan önce çağrılır.
   /// İzin verilirse normal döner; verilmezse hata fırlatır.
   /// Hata kodları: 'project_limit' | 'trial_expired'
+  ///
+  /// Ağ hatası (internet yok) durumunda: cache'te "active" (lisanslı) bir
+  /// kayıt varsa sessizce izin verilir — sayaç zaten lisanslı kullanıcı
+  /// için sunucuda anlamsız. Cache yoksa/trial ise LicenseOfflineException
+  /// fırlatılır (ekranda "internet gerekiyor" mesajı için).
   Future<void> requestCreateProject() async {
     try {
       final callable = _functions.httpsCallable('createProject');
       await callable.call({'appId': appId});
     } on FirebaseFunctionsException catch (e) {
       throw LicenseDeniedException(e.message ?? 'unknown');
+    } catch (e) {
+      final cached = await LicenseCacheService().load();
+      if (cached != null && cached.license.isLicensed) return;
+      throw LicenseOfflineException(e);
     }
   }
 
   /// PDF üretmeden önce çağrılır. İzin yoksa LicenseDeniedException fırlatır.
   /// Hata kodları: 'pdf_already_used' | 'trial_expired'
+  ///
+  /// Ağ hatası durumunda davranış requestCreateProject ile aynı: lisanslı
+  /// kullanıcı için cache üzerinden sessizce izin verilir.
   Future<void> requestGeneratePdf(String projectId) async {
     try {
       final callable = _functions.httpsCallable('generatePdf');
       await callable.call({'appId': appId, 'projectId': projectId});
     } on FirebaseFunctionsException catch (e) {
       throw LicenseDeniedException(e.message ?? 'unknown');
+    } catch (e) {
+      final cached = await LicenseCacheService().load();
+      if (cached != null && cached.license.isLicensed) return;
+      throw LicenseOfflineException(e);
     }
   }
 
@@ -155,11 +172,23 @@ class LicenseService {
   }
 }
 
-/// Lisans sınırı nedeniyle işlem reddedildiğinde fırlatılır.
+/// Lisans sınırı nedeniyle işlem reddedildiğinde fırlatılır (sunucu bilerek
+/// reddetti — ör. proje limiti, deneme süresi doldu).
 class LicenseDeniedException implements Exception {
   final String reason; // 'project_limit' | 'trial_expired' | ...
   LicenseDeniedException(this.reason);
 
   @override
   String toString() => 'LicenseDeniedException($reason)';
+}
+
+/// Sunucuya ulaşılamadığı (ağ yok vb.) VE kullanıcının offline-geçerli bir
+/// lisansı da olmadığı durumda fırlatılır — trial kullanıcı bu duruma
+/// düşerse "internet gerekiyor" mesajı göstermek için kullanılır.
+class LicenseOfflineException implements Exception {
+  final Object originalError;
+  LicenseOfflineException(this.originalError);
+
+  @override
+  String toString() => 'Bu işlem için internet bağlantısı gerekiyor.';
 }

@@ -143,6 +143,22 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
           return;
         }
 
+        // Deneme kullanıcısı offline'dayken proje oluşturmaya çalıştı —
+        // bu sayaç sunucuda tutulduğundan bypass edilemez.
+        if (e is LicenseOfflineException) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Yeni proje oluşturmak için internet bağlantısı gerekiyor.',
+              ),
+              backgroundColor: Colors.orange.shade800,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
         // Diğer hatalar → eski davranış
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),

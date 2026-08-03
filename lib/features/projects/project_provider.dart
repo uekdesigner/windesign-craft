@@ -74,7 +74,9 @@ class ProjectNotifier extends AsyncNotifier<List<Project>> {
         },
       );
     } catch (e) {
-      if (e is LicenseDeniedException) rethrow;
+      if (e is LicenseDeniedException || e is LicenseOfflineException) {
+        rethrow;
+      }
       _errorHandler.handleError(
         error: e,
         context: 'ProjectNotifier.addProject',
